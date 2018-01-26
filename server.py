@@ -31,6 +31,8 @@ def valid_domain_name(name, allow_wildcard=True):
 
 def load_cname_records(parser):
     records = []
+    if not parser.has_section('cname'):
+        return records
     for name, cname in parser.items('cname'):
         if not valid_domain_name(name):
             raise ValueError('invalid domain name %r' % name)
@@ -42,27 +44,33 @@ def load_cname_records(parser):
 
 def load_a_records(parser):
     records = []
-    for name, addr in parser.items('ipv4'):
+    if not parser.has_section('ipv4'):
+        return records
+    for name, addrs in parser.items('ipv4'):
         if not valid_domain_name(name):
             raise ValueError('invalid domain name %r' % name)
-        try:
-            socket.inet_pton(socket.AF_INET, addr)
-        except socket.error:
-            raise ValueError('invalid IPv4 address %r' % addr)
-        records.append((name, addr))
+        for addr in addrs.split('\n'):
+            try:
+                socket.inet_pton(socket.AF_INET, addr)
+            except socket.error:
+                raise ValueError('invalid IPv4 address %r' % addr)
+            records.append((name, addr))
     return records
 
 
 def load_aaaa_records(parser):
     records = []
-    for name, addr in parser.items('ipv6'):
+    if not parser.has_section('ipv6'):
+        return records
+    for name, addrs in parser.items('ipv6'):
         if not valid_domain_name(name):
             raise ValueError('invalid domain name %r' % name)
-        try:
-            socket.inet_pton(socket.AF_INET6, addr)
-        except socket.error:
-            raise ValueError('invalid IPv6 address %r' % addr)
-        records.append((name, addr))
+        for addr in addrs.split('\n'):
+            try:
+                socket.inet_pton(socket.AF_INET6, addr)
+            except socket.error:
+                raise ValueError('invalid IPv6 address %r' % addr)
+            records.append((name, addr))
     return records
 
 
