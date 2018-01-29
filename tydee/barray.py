@@ -3,6 +3,8 @@ import struct
 
 class barray(object):
     def __init__(self, data, length=None):
+        if length is not None and not isinstance(length, int):
+            raise TypeError('length must be an int if provided')
         if isinstance(data, int):
             if length is None:
                 raise ValueError('Need a length for int data')
@@ -142,6 +144,9 @@ class barray(object):
         if len(self) != len(other):
             return False
         return all(x == y for x, y in zip(self, other))
+
+    def __ne__(self, other):
+        return not (self == other)
 
     def as_int(self):
         return sum(

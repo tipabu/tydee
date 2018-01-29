@@ -164,7 +164,8 @@ def readName(data, offset):
             if isLabelRef(data, i[0]):
                 ref_offset = ((readByte(data, i[0]) & 0x3f) << 8) + \
                     readByte(data, i[0] + 1)
-                yield readName(data, ref_offset)[0]
+                for lbl in readName(data, ref_offset)[0]:
+                    yield lbl
                 n = 2
                 s = False
             else:
@@ -172,7 +173,7 @@ def readName(data, offset):
                 if s:
                     yield s
             i[0] += n
-    result = tuple(doRead()), i[0] - offset
+    result = Domain(doRead()), i[0] - offset
     return result
 
 
@@ -182,6 +183,14 @@ def writeName(name):
     buf = [writeLabel(x) for x in name]
     buf.append(b'\x00')
     return b''.join(buf)
+
+
+class Domain(tuple):
+    def __repr__(self):
+        return self.__class__.__name__ + super(Domain, self).__repr__()
+
+    def __str__(self):
+        return '.'.join(self)
 
 
 class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):

@@ -12,7 +12,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from message import (
-    Message, ResourceRecord, rcodeNameToValue, typeNameToValue,
+    Message, ResourceRecord, rcodeNameToValue, typeNameToValue, Domain,
 )
 
 
@@ -38,7 +38,7 @@ def load_cname_records(parser):
             raise ValueError('invalid domain name %r' % name)
         if not valid_domain_name(cname, allow_wildcard=False):
             raise ValueError('invalid canonical name %r' % cname)
-        records.append((name, cname.split('.')))
+        records.append((name, Domain(cname.split('.'))))
     return records
 
 
@@ -76,6 +76,7 @@ def load_aaaa_records(parser):
 
 BIND_IP = '127.0.0.1'
 BIND_PORT = 5354
+RETRIES = 2
 
 
 def NotImpResponse(req):
@@ -199,7 +200,7 @@ class Server(object):
         self.conf_file = conf_file
         self.running = False
         self.db = None
-        self.reload(None, None)
+        self.reload()
 
     def handle(self, req):
         logging.debug('Received request %r', req)
@@ -214,8 +215,12 @@ class Server(object):
         rrs = self.db.lookup(req.questions[0].name)
 
         if rrs is not None:
-            # TODO: if any rr is a CNAME, follow and look for A or AAAA
-            # records, too -- or maybe that belongs in lookup?
+            # Maybe this belongs in lookup?
+            cnames = [rr for rr in rrs if rr.rrtype_name == 'CNAME']
+            for cname in cnames:
+                more_rrs = self.db.lookup(cname.data)
+                if more_rrs:
+                    rrs += more_rrs
             return Response(req, tuple(
                 rr for rr in rrs
                 if q.qtype == rr.rrtype or rr.rrtype_name in ('CNAME', 'TXT')))
@@ -224,16 +229,22 @@ class Server(object):
 
     def run(self):
         self.running = True
-        signal.signal(signal.SIGTERM, self.shutdown)
-        signal.signal(signal.SIGINT, self.shutdown)
-        signal.signal(signal.SIGHUP, self.reload)
+        try:
+            signal.signal(signal.SIGTERM, self.shutdown)
+            signal.signal(signal.SIGINT, self.shutdown)
+            signal.signal(signal.SIGHUP, self.reload)
+        except ValueError:
+            pass  # Non-main thread, probably
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind((BIND_IP, BIND_PORT))
+        s.settimeout(0.05)
         logging.info('Listening on udp://[%s]:%d' % (BIND_IP, BIND_PORT))
         while self.running:
             request = None
             try:
                 data, addr = s.recvfrom(1024)
+            except socket.timeout:
+                continue
             except socket.error as e:
                 if errno.errorcode[e.errno] == 'EINTR':
                     continue
@@ -245,14 +256,20 @@ class Server(object):
                 logging.exception('Error handling request %r', request)
                 response = ServFailResponse(request)
             if response:
-                s.sendto(response.to_wire(), addr)
+                for x in range(RETRIES):
+                    try:
+                        s.sendto(response.to_wire(), addr)
+                    except socket.timeout:
+                        continue
+                    else:
+                        break
             # else, no response warranted
         s.close()
 
-    def shutdown(self, signum, frame):
+    def shutdown(self, signum=None, frame=None):
         self.running = False
 
-    def reload(self, signum, frame):
+    def reload(self, signum=None, frame=None):
         if not self.db:
             logging.debug('Loading config from %s', self.conf_file)
         else:
