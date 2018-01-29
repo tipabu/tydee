@@ -12,7 +12,8 @@ except ImportError:
     import ConfigParser as configparser
 
 from message import (
-    Message, ResourceRecord, rcodeNameToValue, typeNameToValue, Domain,
+    Message, ResourceRecord, Domain, typeNameToValue, Response,
+    NXDomainResponse, FormErrResponse, ServFailResponse, NotImpResponse,
 )
 
 
@@ -77,82 +78,6 @@ def load_aaaa_records(parser):
 BIND_IP = '127.0.0.1'
 BIND_PORT = 5354
 RETRIES = 2
-
-
-def NotImpResponse(req):
-    return Message(
-        b'', req.id, is_response=True, op_code=req.op_code,
-        is_authoritative=False,
-        is_truncated=False,  # TODO: when is this supposed to be true?
-        recursion_desired=False, recursion_available=False,
-        reserved=0,
-        authentic_data=False, checking_disabled=False,
-        response_code=rcodeNameToValue['NotImp'],
-        questions=req.questions,
-        answers=(), name_servers=(), additional_records=(),
-    )
-
-
-def ServFailResponse(req):
-    return Message(
-        b'', req.id, is_response=True, op_code=req.op_code,
-        is_authoritative=False,
-        is_truncated=False,  # TODO: when is this supposed to be true?
-        recursion_desired=False, recursion_available=False,
-        reserved=0,
-        authentic_data=False, checking_disabled=False,
-        response_code=rcodeNameToValue['ServFail'],
-        questions=req.questions,
-        answers=(), name_servers=(), additional_records=(),
-    )
-
-
-def FormErrResponse(req):
-    return Message(
-        b'', req.id, is_response=True, op_code=req.op_code,
-        is_authoritative=False,
-        is_truncated=False,  # TODO: when is this supposed to be true?
-        recursion_desired=False, recursion_available=False,
-        reserved=0,
-        authentic_data=False, checking_disabled=False,
-        response_code=rcodeNameToValue['FormErr'],
-        questions=req.questions,
-        answers=(), name_servers=(), additional_records=(),
-    )
-
-
-def Response(req, answers):
-    return Message(
-        b'', req.id, is_response=True, op_code=req.op_code,
-        is_authoritative=False,
-        is_truncated=False,  # TODO: when is this supposed to be true?
-        recursion_desired=False, recursion_available=False,
-        reserved=0,
-        authentic_data=False, checking_disabled=False,
-        response_code=rcodeNameToValue['NoError'],
-        questions=req.questions,
-        answers=answers, name_servers=(), additional_records=(),
-    )
-
-
-def CNAMEResponse(req, cname):
-    return Response(req, (
-        ResourceRecord(req.questions[0].name, 5, 1, 300, cname),
-    ))
-
-
-def NXDOMAINResponse(req):
-    return Message(
-        b'', req.id, is_response=True, op_code=req.op_code,
-        is_authoritative=False,
-        is_truncated=False,  # TODO: when is this supposed to be true?
-        recursion_desired=False, recursion_available=False,
-        reserved=0,
-        authentic_data=False, checking_disabled=False,
-        response_code=rcodeNameToValue['NXDomain'],
-        questions=req.questions,
-        answers=(), name_servers=(), additional_records=(),
-    )
 
 
 class RRDB(object):
@@ -221,11 +146,11 @@ class Server(object):
                 more_rrs = self.db.lookup(cname.data)
                 if more_rrs:
                     rrs += more_rrs
-            return Response(req, tuple(
+            return Response(req, answers=tuple(
                 rr for rr in rrs
                 if q.qtype == rr.rrtype or rr.rrtype_name in ('CNAME', 'TXT')))
 
-        return NXDOMAINResponse(req)
+        return NXDomainResponse(req)
 
     def run(self):
         self.running = True

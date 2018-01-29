@@ -347,3 +347,33 @@ class Message(namedtuple('Message', (
     @property
     def response_code_name(self):
         return rcodeValueToName[self.response_code]
+
+
+def Response(req, rcode='NoError', answers=()):
+    return Message(
+        b'', req.id, is_response=True, op_code=req.op_code,
+        is_authoritative=False,
+        is_truncated=False,  # TODO: when is this supposed to be true?
+        recursion_desired=False, recursion_available=False,
+        reserved=0,
+        authentic_data=False, checking_disabled=False,
+        response_code=rcodeNameToValue[rcode],
+        questions=req.questions,
+        answers=answers, name_servers=(), additional_records=(),
+    )
+
+
+def NotImpResponse(req):
+    return Response(req, 'NotImp')
+
+
+def ServFailResponse(req):
+    return Response(req, 'ServFail')
+
+
+def FormErrResponse(req):
+    return Response(req, 'FormErr')
+
+
+def NXDomainResponse(req):
+    return Response(req, 'NXDomain')
