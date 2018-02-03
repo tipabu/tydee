@@ -39,7 +39,7 @@ def load_cname_records(parser):
             raise ValueError('invalid domain name %r' % name)
         if not valid_domain_name(cname, allow_wildcard=False):
             raise ValueError('invalid canonical name %r' % cname)
-        records.append((name, Domain(cname.split('.'))))
+        records.append((name, Domain(cname)))
     return records
 
 

@@ -1,5 +1,6 @@
 from __future__ import print_function, unicode_literals
 from collections import namedtuple
+import random
 import socket
 import struct
 import sys
@@ -186,6 +187,13 @@ def writeName(name):
 
 
 class Domain(tuple):
+    __slots__ = ()
+
+    def __new__(cls, name):
+        if isinstance(name, str):
+            name = name.split('.')
+        return super(Domain, cls).__new__(cls, name)
+
     def __repr__(self):
         return self.__class__.__name__ + super(Domain, self).__repr__()
 
@@ -194,6 +202,17 @@ class Domain(tuple):
 
 
 class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
+    __slots__ = ()
+
+    def __new__(cls, name, qtype, qclass):
+        if isinstance(name, str):
+            name = Domain(name)
+        if isinstance(qtype, str):
+            qtype = qTypeNameToValue[qtype]
+        if isinstance(qclass, str):
+            qclass = qClassNameToValue[qclass]
+        return super(Question, cls).__new__(cls, name, qtype, qclass)
+
     @classmethod
     def from_wire(cls, data, offset):
         name, n = readName(data, offset)
@@ -217,6 +236,8 @@ class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
 
 class ResourceRecord(namedtuple('ResourceRecord', (
         'rrname', 'rrtype', 'rrclass', 'ttl', 'data'))):
+    __slots__ = ()
+
     @classmethod
     def from_wire(cls, data, offset):
         name, n = readName(data, offset)
@@ -261,6 +282,8 @@ class Message(namedtuple('Message', (
         'is_truncated', 'recursion_desired', 'recursion_available',
         'reserved', 'authentic_data', 'checking_disabled', 'response_code',
         'questions', 'answers', 'name_servers', 'additional_records'))):
+    __slots__ = ()
+
     @classmethod
     def from_wire(cls, data):
         offset = 12
@@ -347,6 +370,21 @@ class Message(namedtuple('Message', (
     @property
     def response_code_name(self):
         return rcodeValueToName[self.response_code]
+
+
+def Request(questions=(), op_code='Query'):
+    if isinstance(questions, Question):
+        questions = (questions, )
+    return Message(
+        b'', random.randrange(1 << 16), is_response=False,
+        op_code=opcodeNameToValue[op_code],
+        is_authoritative=False, is_truncated=False,
+        recursion_desired=False, recursion_available=False,
+        reserved=0, authentic_data=False, checking_disabled=False,
+        response_code=0,
+        questions=questions,
+        answers=(), name_servers=(), additional_records=(),
+    )
 
 
 def Response(req, rcode='NoError', answers=()):
