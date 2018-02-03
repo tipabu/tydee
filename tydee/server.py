@@ -11,8 +11,8 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-from message import (
-    Message, ResourceRecord, Domain, typeNameToValue, Response,
+from .message import (
+    Message, ResourceRecord, Domain, Response,
     NXDomainResponse, FormErrResponse, ServFailResponse, NotImpResponse,
 )
 
@@ -106,15 +106,15 @@ class RRDB(object):
                 return ()
             else:  # exact match
                 return tuple(
-                    ResourceRecord(name, typeNameToValue[rrtype], 1, 300, data)
+                    ResourceRecord(name, rrtype, 'IN', 300, data)
                     for rrtype, data in t['.'])
         if '*' in t and i + 1 == len(name):
             return tuple(
-                ResourceRecord(name, typeNameToValue[rrtype], 1, 300, data)
+                ResourceRecord(name, rrtype, 'IN', 300, data)
                 for rrtype, data in t['*']['.'])
         elif wildcard:
             return tuple(
-                ResourceRecord(name, typeNameToValue[rrtype], 1, 300, data)
+                ResourceRecord(name, rrtype, 'IN', 300, data)
                 for rrtype, data in wildcard['.'])
         else:
             return None

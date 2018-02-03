@@ -5,6 +5,11 @@ import socket
 import struct
 import sys
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 typeNameToValue = {
     'A':           1,  # a host address
     'NS':          2,  # an authoritative name server
@@ -188,7 +193,7 @@ class Domain(tuple):
     __slots__ = ()
 
     def __new__(cls, name):
-        if isinstance(name, str):
+        if isinstance(name, basestring):
             name = name.split('.')
         return super(Domain, cls).__new__(cls, name)
 
@@ -203,11 +208,11 @@ class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
     __slots__ = ()
 
     def __new__(cls, name, qtype, qclass):
-        if isinstance(name, str):
+        if isinstance(name, basestring):
             name = Domain(name)
-        if isinstance(qtype, str):
+        if isinstance(qtype, basestring):
             qtype = qTypeNameToValue[qtype]
-        if isinstance(qclass, str):
+        if isinstance(qclass, basestring):
             qclass = qClassNameToValue[qclass]
         return super(Question, cls).__new__(cls, name, qtype, qclass)
 
@@ -235,6 +240,16 @@ class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
 class ResourceRecord(namedtuple('ResourceRecord', (
         'rrname', 'rrtype', 'rrclass', 'ttl', 'data'))):
     __slots__ = ()
+
+    def __new__(cls, rrname, rrtype, rrclass, ttl, data):
+        if isinstance(rrname, basestring):
+            rrname = Domain(name)
+        if isinstance(rrtype, basestring):
+            rrtype = typeNameToValue[rrtype]
+        if isinstance(rrclass, basestring):
+            rrclass = classNameToValue[rrclass]
+        return super(ResourceRecord, cls).__new__(
+            cls, rrname, rrtype, rrclass, ttl, data)
 
     @classmethod
     def from_wire(cls, data, offset):
