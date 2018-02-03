@@ -5,8 +5,6 @@ import socket
 import struct
 import sys
 
-from barray import barray
-
 typeNameToValue = {
     'A':           1,  # a host address
     'NS':          2,  # an authoritative name server
@@ -287,22 +285,18 @@ class Message(namedtuple('Message', (
     @classmethod
     def from_wire(cls, data):
         offset = 12
-        header = barray(data[:offset])
-        _id = header[:16].as_int()
-        is_response = header[16]
-        op_code = header[17:21].as_int()
-        is_authoritative = header[21]
-        is_truncated = header[22]
-        recursion_desired = header[23]
-        recursion_available = header[24]
-        _reserved = int(header[25])
-        authentic_data = header[26]
-        checking_disabled = header[27]
-        response_code = header[28:32].as_int()
-        num_questions = header[32:48].as_int()
-        num_answers = header[48:64].as_int()
-        num_name_servers = header[64:80].as_int()
-        num_additional = header[80:96].as_int()
+        (_id, x, y, num_questions, num_answers, num_name_servers,
+         num_additional) = struct.unpack('!H2B4H', data[:offset])
+        is_response = bool(x & 0x80)
+        op_code = (x & 0x78) >> 3
+        is_authoritative = bool(x & 0x04)
+        is_truncated = bool(x & 0x02)
+        recursion_desired = bool(x & 0x01)
+        recursion_available = bool(y & 0x80)
+        _reserved = (y & 0x40) >> 6
+        authentic_data = bool(y & 0x20)
+        checking_disabled = bool(y & 0x10)
+        response_code = y & 0x0f
 
         questions = []
         for _ in range(num_questions):
@@ -340,23 +334,24 @@ class Message(namedtuple('Message', (
         return result
 
     def to_wire(self):
-        header = barray(b'\x00' * 12)
-        header[:16] = self.id
-        header[16] = self.is_response
-        header[17:21] = self.op_code
-        header[21] = self.is_authoritative
-        header[22] = self.is_truncated
-        header[23] = self.recursion_desired
-        header[24] = self.recursion_available
-        header[25] = self.reserved
-        header[26] = self.authentic_data
-        header[27] = self.checking_disabled
-        header[28:32] = self.response_code
-        header[32:48] = len(self.questions)
-        header[48:64] = len(self.answers)
-        header[64:80] = len(self.name_servers)
-        header[80:96] = len(self.additional_records)
-        buf = [header.as_bytes()]
+        buf = [struct.pack(
+            '!H2B4H',
+            self.id,
+            (self.is_response << 7) |
+            (self.op_code << 3) |
+            (self.is_authoritative << 2) |
+            (self.is_truncated << 1) |
+            self.recursion_desired,
+            (self.recursion_available << 7) |
+            (self.reserved << 6) |
+            (self.authentic_data << 5) |
+            (self.checking_disabled << 4) |
+            self.response_code,
+            len(self.questions),
+            len(self.answers),
+            len(self.name_servers),
+            len(self.additional_records),
+        )]
         buf.extend(x.to_wire() for x in self.questions)
         buf.extend(x.to_wire() for x in self.answers)
         buf.extend(x.to_wire() for x in self.name_servers)
