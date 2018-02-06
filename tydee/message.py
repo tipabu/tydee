@@ -166,8 +166,8 @@ def readName(data, offset):
         s = True
         while s:
             if isLabelRef(data, i[0]):
-                ref_offset = ((readByte(data, i[0]) & 0x3f) << 8) + \
-                    readByte(data, i[0] + 1)
+                ref_offset = 0x3fff & struct.unpack(
+                    '!H', data[i[0]:i[0] + 2])[0]
                 for lbl in readName(data, ref_offset)[0]:
                     yield lbl
                 n = 2
@@ -181,18 +181,17 @@ def readName(data, offset):
     return result
 
 
-def writeName(name, label_cache=None, offset=0):
+def writeName(name, label_cache, offset):
     tail = b'\x00'
     buf = []
     for i, x in enumerate(name):
-        if label_cache is not None:
-            if name[i:] in label_cache:
-                tail = label_cache[name[i:]]
-                break
-            label_cache[name[i:]] = offset
-        x = writeLabel(x)
-        buf.append(x)
-        offset += len(x)
+        if name[i:] in label_cache:
+            tail = label_cache[name[i:]]
+            break
+        if offset < (1 << 14):  # else, oh boy...
+            label_cache[name[i:]] = struct.pack('!H', 0xc000 | offset)
+        buf.append(writeLabel(x))
+        offset += len(buf[-1])
     buf.append(tail)
     return b''.join(buf)
 
@@ -230,7 +229,7 @@ class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
         qtype, qclass = struct.unpack('!2H', data[offset + n:offset + n + 4])
         return cls(name, qtype, qclass), n + 4
 
-    def to_wire(self, label_cache=None, offset=0):
+    def to_wire(self, label_cache, offset):
         return writeName(self.name, label_cache, offset) + struct.pack(
             '!2H', self.qtype, self.qclass)
 
@@ -274,13 +273,15 @@ class ResourceRecord(namedtuple('ResourceRecord', (
             name, rrtype, rrclass, ttl, rrdata
         ), n + 10 + data_length
 
-    def to_wire(self):
-        buf = [writeName(self.rrname)]
+    def to_wire(self, label_cache, offset):
+        buf = [writeName(self.rrname, label_cache, offset)]
+        offset += len(buf[0])
         transform = {
-            'CNAME': lambda: writeName(self.data),
+            'CNAME': lambda: writeName(self.data, label_cache, offset),
             'A': lambda: socket.inet_pton(socket.AF_INET, self.data),
             'AAAA': lambda: socket.inet_pton(socket.AF_INET6, self.data),
         }.get(typeValueToName[self.rrtype], lambda: self.data)
+        offset += 10  # for the packing, below
         data = transform()
         buf.append(struct.pack(
             '!2HIH', self.rrtype, self.rrclass, self.ttl, len(data)))
@@ -373,10 +374,13 @@ class Message(namedtuple('Message', (
             len(self.name_servers),
             len(self.additional_records),
         )]
-        buf.extend(x.to_wire() for x in self.questions)
-        buf.extend(x.to_wire() for x in self.answers)
-        buf.extend(x.to_wire() for x in self.name_servers)
-        buf.extend(x.to_wire() for x in self.additional_records)
+        label_cache = {}
+        offset = len(buf[0])
+        for section in (self.questions, self.answers, self.name_servers,
+                        self.additional_records):
+            for record in section:
+                buf.append(record.to_wire(label_cache, offset))
+                offset += len(buf[-1])
         return b''.join(buf)
 
     @property

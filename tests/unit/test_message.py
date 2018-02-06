@@ -133,8 +133,7 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(resp.additional_records[0].ttl, 0)
         self.assertEqual(resp.additional_records[0].data, b'')
         self.assertEqual(Message.from_wire(resp.to_wire())[1:], resp[1:])
-        # TODO: need reasonably efficient compression for
-        # self.assertEqual(resp.to_wire(), resp.raw_data)
+        self.assertEqual(resp.to_wire(), resp.raw_data)
 
     def test_response_parsing_2(self):
         resp = Message.from_wire(get_raw('resp2.dump'))
@@ -166,8 +165,7 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(resp.additional_records[0].ttl, 0)
         self.assertEqual(resp.additional_records[0].data, b'')
         self.assertEqual(Message.from_wire(resp.to_wire())[1:], resp[1:])
-        # TODO: need reasonably efficient compression for
-        # self.assertEqual(resp.to_wire(), resp.raw_data)
+        self.assertEqual(resp.to_wire(), resp.raw_data)
 
     def test_response_parsing_3(self):
         resp = Message.from_wire(get_raw('resp3.dump'))
@@ -197,5 +195,4 @@ class TestMessage(unittest.TestCase):
         self.assertLength(resp.name_servers, 0)
         self.assertLength(resp.additional_records, 0)
         self.assertEqual(Message.from_wire(resp.to_wire())[1:], resp[1:])
-        # TODO: need reasonably efficient compression for
-        # self.assertEqual(resp.to_wire(), resp.raw_data)
+        self.assertEqual(resp.to_wire(), resp.raw_data)
