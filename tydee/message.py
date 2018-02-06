@@ -243,7 +243,7 @@ class ResourceRecord(namedtuple('ResourceRecord', (
 
     def __new__(cls, rrname, rrtype, rrclass, ttl, data):
         if isinstance(rrname, basestring):
-            rrname = Domain(name)
+            rrname = Domain(rrname)
         if isinstance(rrtype, basestring):
             rrtype = typeNameToValue[rrtype]
         if isinstance(rrclass, basestring):
