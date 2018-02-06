@@ -181,11 +181,19 @@ def readName(data, offset):
     return result
 
 
-def writeName(name):
-    if not name:
-        return b'\x00'
-    buf = [writeLabel(x) for x in name]
-    buf.append(b'\x00')
+def writeName(name, label_cache=None, offset=0):
+    tail = b'\x00'
+    buf = []
+    for i, x in enumerate(name):
+        if label_cache is not None:
+            if name[i:] in label_cache:
+                tail = label_cache[name[i:]]
+                break
+            label_cache[name[i:]] = offset
+        x = writeLabel(x)
+        buf.append(x)
+        offset += len(x)
+    buf.append(tail)
     return b''.join(buf)
 
 
@@ -222,11 +230,9 @@ class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
         qtype, qclass = struct.unpack('!2H', data[offset + n:offset + n + 4])
         return cls(name, qtype, qclass), n + 4
 
-    def to_wire(self):
-        buf = [writeLabel(x) for x in self.name]
-        buf.append(b'\x00')
-        buf.append(struct.pack('!2H', self.qtype, self.qclass))
-        return b''.join(buf)
+    def to_wire(self, label_cache=None, offset=0):
+        return writeName(self.name, label_cache, offset) + struct.pack(
+            '!2H', self.qtype, self.qclass)
 
     @property
     def qtype_name(self):
