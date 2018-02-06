@@ -35,6 +35,10 @@ class TestServer(unittest.TestCase):
         cls.server.shutdown()
         cls.server_thread.join()
 
+    def setUp(self):
+        if not self.server_thread.is_alive():
+            self.fail('Server is not running.')
+
     def make_request(self, req):
         self.client_socket.sendall(req.to_wire())
         data = self.client_socket.recv(1024)
