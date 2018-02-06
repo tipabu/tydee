@@ -262,7 +262,6 @@ class ResourceRecord(namedtuple('ResourceRecord', (
         rrtype, rrclass, ttl, data_length = struct.unpack(
             '!2HIH', data[offset + n:offset + n + 10])
         rrdata = data[offset + n + 10:offset + n + 10 + data_length]
-        print(rrtype, rrclass, data_length, rrdata)
         transform = {
             'CNAME': lambda: readName(data, offset + n + 10)[0],
             'A': lambda: socket.inet_ntop(socket.AF_INET, rrdata),
