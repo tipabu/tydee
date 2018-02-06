@@ -50,6 +50,17 @@ class TestServer(unittest.TestCase):
         resp = self.make_request(
             Request(Question('this does not make sense', 'A', 'IN')))
         self.assertEqual(resp.response_code_name, 'FormErr')
+        self.assertEqual(resp.answers, ())
+        self.assertEqual(resp.name_servers, ())
+        self.assertEqual(resp.additional_records, ())
+
+    def test_not_implemented(self):
+        resp = self.make_request(
+            Request(Question('some.crazy.domain', '*', 'IN')))
+        self.assertEqual(resp.response_code_name, 'NotImp')
+        self.assertEqual(resp.answers, ())
+        self.assertEqual(resp.name_servers, ())
+        self.assertEqual(resp.additional_records, ())
 
     def test_cname_only(self):
         result = self.resolver.query('some.crazy.domain', 'CNAME')
