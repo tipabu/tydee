@@ -132,7 +132,8 @@ class Server(object):
         if req.op_code_name != 'Query' or len(req.questions) != 1:
             return NotImpResponse(req)
         q = req.questions[0]
-        if q.qclass_name != 'IN' or q.qtype_name not in ('A', 'AAAA', 'CNAME'):
+        if q.qclass_name != 'IN' or q.qtype_name not in (
+                'A', 'AAAA', 'CNAME', '*'):
             return NotImpResponse(req)
         if not valid_domain_name(req.questions[0].name):
             return FormErrResponse(req)
@@ -148,7 +149,8 @@ class Server(object):
                     rrs += more_rrs
             return Response(req, answers=tuple(
                 rr for rr in rrs
-                if q.qtype == rr.rrtype or rr.rrtype_name in ('CNAME', 'TXT')))
+                if q.qtype_name == '*' or q.qtype == rr.rrtype
+                or rr.rrtype_name in ('CNAME', 'TXT')))
 
         return NXDomainResponse(req)
 

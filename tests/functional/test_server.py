@@ -7,7 +7,7 @@ import dns.resolver
 import dns.reversename
 
 import tydee.server
-from tydee.message import Message, Request, Question
+from tydee.message import Message, Request, Question, ResourceRecord, Domain
 
 
 class TestServer(unittest.TestCase):
@@ -62,12 +62,25 @@ class TestServer(unittest.TestCase):
             self.assertEqual(resp.additional_records, ())
 
         assertNotImpl(self.make_request(
-            Request(Question('some.crazy.domain', '*', 'IN'))))
-        assertNotImpl(self.make_request(
             Request(Question('some.crazy.domain', 'MX', 'IN'))))
         assertNotImpl(self.make_request(
             Request((Question('some.crazy.domain', 'A', 'IN'),
                      Question('some.other.domain', 'A', 'IN')))))
+
+    def test_all_recurses(self):
+        resp = self.make_request(
+            Request(Question('some.crazy.domain', '*', 'IN')))
+        self.assertEqual(resp.response_code_name, 'NoError')
+        self.assertEqual(resp.answers[0], (ResourceRecord(
+            Domain('some.crazy.domain'), 'CNAME', 'IN', 300,
+            Domain('container.auth-test.swift.dev'))))
+        self.assertEqual({
+            (str(rr.rrname), rr.rrtype_name, rr.rrclass_name, str(rr.data))
+            for rr in resp.answers[1:]}, {
+                ('container.auth-test.swift.dev', 'AAAA', 'IN', '::1'),
+                ('container.auth-test.swift.dev', 'A', 'IN', '127.0.0.1'),
+                ('container.auth-test.swift.dev', 'A', 'IN', '127.0.1.1'),
+            })
 
     def test_cname_only(self):
         result = self.resolver.query('some.crazy.domain', 'CNAME')
