@@ -143,10 +143,11 @@ class Server(object):
         if rrs is not None:
             # Maybe this belongs in lookup?
             cnames = [rr for rr in rrs if rr.rrtype_name == 'CNAME']
-            for cname in cnames:
-                more_rrs = self.db.lookup(cname.data)
-                if more_rrs:
-                    rrs += more_rrs
+            if cnames and q.qtype_name in ('A', 'AAAA'):
+                for cname in cnames:
+                    more_rrs = self.db.lookup(cname.data)
+                    if more_rrs:
+                        rrs += more_rrs
             return Response(req, answers=tuple(
                 rr for rr in rrs
                 if q.qtype_name == '*' or q.qtype == rr.rrtype

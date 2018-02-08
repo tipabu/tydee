@@ -61,20 +61,13 @@ class TestServer(unittest.TestCase):
             Request((Question('some.crazy.domain', 'A', 'IN'),
                      Question('some.other.domain', 'A', 'IN')))))
 
-    def test_all_recurses(self):
+    def test_all_does_not_recurse(self):
         resp = self.make_request(
             Request(Question('some.crazy.domain', '*', 'IN')))
         self.assertEqual(resp.response_code_name, 'NoError')
-        self.assertEqual(resp.answers[0], ResourceRecord(
+        self.assertEqual(resp.answers, (ResourceRecord(
             Domain('some.crazy.domain'), 'CNAME', 'IN', 300,
-            Domain('container.auth-test.swift.dev')))
-        self.assertEqual({
-            (str(rr.rrname), rr.rrtype_name, rr.rrclass_name, str(rr.data))
-            for rr in resp.answers[1:]}, {
-                ('container.auth-test.swift.dev', 'AAAA', 'IN', '::1'),
-                ('container.auth-test.swift.dev', 'A', 'IN', '127.0.0.1'),
-                ('container.auth-test.swift.dev', 'A', 'IN', '127.0.1.1'),
-            })
+            Domain('container.auth-test.swift.dev')),))
 
     def test_cname_only(self):
         resp = self.make_request(
