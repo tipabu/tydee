@@ -55,12 +55,19 @@ class TestServer(unittest.TestCase):
         self.assertEqual(resp.additional_records, ())
 
     def test_not_implemented(self):
-        resp = self.make_request(
-            Request(Question('some.crazy.domain', '*', 'IN')))
-        self.assertEqual(resp.response_code_name, 'NotImp')
-        self.assertEqual(resp.answers, ())
-        self.assertEqual(resp.name_servers, ())
-        self.assertEqual(resp.additional_records, ())
+        def assertNotImpl(resp):
+            self.assertEqual(resp.response_code_name, 'NotImp')
+            self.assertEqual(resp.answers, ())
+            self.assertEqual(resp.name_servers, ())
+            self.assertEqual(resp.additional_records, ())
+
+        assertNotImpl(self.make_request(
+            Request(Question('some.crazy.domain', '*', 'IN'))))
+        assertNotImpl(self.make_request(
+            Request(Question('some.crazy.domain', 'MX', 'IN'))))
+        assertNotImpl(self.make_request(
+            Request((Question('some.crazy.domain', 'A', 'IN'),
+                     Question('some.other.domain', 'A', 'IN')))))
 
     def test_cname_only(self):
         result = self.resolver.query('some.crazy.domain', 'CNAME')
