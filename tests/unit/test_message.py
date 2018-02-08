@@ -26,7 +26,8 @@ class TestMessage(unittest.TestCase):
     # Captured with something like:
     #    sudo tcpdump -X udp port 53
     def test_request_parsing_1(self):
-        req = Message.from_wire(get_raw('req1.dump'))
+        raw_data = get_raw('req1.dump')
+        req = Message.from_wire(raw_data)
         self.assertFalse(req.is_response)
         self.assertEqual(req.op_code_name, 'Query')
         self.assertFalse(req.is_authoritative)
@@ -49,10 +50,11 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(req.additional_records[0].rrclass, 4096)
         self.assertEqual(req.additional_records[0].ttl, 0)
         self.assertEqual(req.additional_records[0].data, b'')
-        self.assertEqual(req.to_wire(), req.raw_data)
+        self.assertEqual(req.to_wire(), raw_data)
 
     def test_request_parsing_2(self):
-        req = Message.from_wire(get_raw('req2.dump'))
+        raw_data = get_raw('req2.dump')
+        req = Message.from_wire(raw_data)
         self.assertFalse(req.is_response)
         self.assertEqual(req.op_code_name, 'Query')
         self.assertFalse(req.is_authoritative)
@@ -75,10 +77,11 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(req.additional_records[0].rrclass, 4096)
         self.assertEqual(req.additional_records[0].ttl, 0)
         self.assertEqual(req.additional_records[0].data, b'')
-        self.assertEqual(req.to_wire(), req.raw_data)
+        self.assertEqual(req.to_wire(), raw_data)
 
     def test_request_parsing_3(self):
-        req = Message.from_wire(get_raw('req3.dump'))
+        raw_data = get_raw('req3.dump')
+        req = Message.from_wire(raw_data)
         self.assertFalse(req.is_response)
         self.assertEqual(req.op_code_name, 'Query')
         self.assertFalse(req.is_authoritative)
@@ -96,10 +99,11 @@ class TestMessage(unittest.TestCase):
         self.assertLength(req.answers, 0)
         self.assertLength(req.name_servers, 0)
         self.assertLength(req.additional_records, 0)
-        self.assertEqual(req.to_wire(), req.raw_data)
+        self.assertEqual(req.to_wire(), raw_data)
 
     def test_response_parsing_1(self):
-        resp = Message.from_wire(get_raw('resp1.dump'))
+        raw_data = get_raw('resp1.dump')
+        resp = Message.from_wire(raw_data)
         self.assertTrue(resp.is_response)
         self.assertEqual(resp.op_code_name, 'Query')
         self.assertFalse(resp.is_authoritative)
@@ -132,11 +136,12 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(resp.additional_records[0].rrclass, 512)
         self.assertEqual(resp.additional_records[0].ttl, 0)
         self.assertEqual(resp.additional_records[0].data, b'')
-        self.assertEqual(Message.from_wire(resp.to_wire())[1:], resp[1:])
-        self.assertEqual(resp.to_wire(), resp.raw_data)
+        self.assertEqual(Message.from_wire(resp.to_wire()), resp)
+        self.assertEqual(resp.to_wire(), raw_data)
 
     def test_response_parsing_2(self):
-        resp = Message.from_wire(get_raw('resp2.dump'))
+        raw_data = get_raw('resp2.dump')
+        resp = Message.from_wire(raw_data)
         self.assertTrue(resp.is_response)
         self.assertEqual(resp.op_code_name, 'Query')
         self.assertFalse(resp.is_authoritative)
@@ -164,11 +169,12 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(resp.additional_records[0].rrclass, 512)
         self.assertEqual(resp.additional_records[0].ttl, 0)
         self.assertEqual(resp.additional_records[0].data, b'')
-        self.assertEqual(Message.from_wire(resp.to_wire())[1:], resp[1:])
-        self.assertEqual(resp.to_wire(), resp.raw_data)
+        self.assertEqual(Message.from_wire(resp.to_wire()), resp)
+        self.assertEqual(resp.to_wire(), raw_data)
 
     def test_response_parsing_3(self):
-        resp = Message.from_wire(get_raw('resp3.dump'))
+        raw_data = get_raw('resp3.dump')
+        resp = Message.from_wire(raw_data)
         self.assertTrue(resp.is_response)
         self.assertEqual(resp.op_code_name, 'Query')
         self.assertFalse(resp.is_authoritative)
@@ -194,5 +200,5 @@ class TestMessage(unittest.TestCase):
 
         self.assertLength(resp.name_servers, 0)
         self.assertLength(resp.additional_records, 0)
-        self.assertEqual(Message.from_wire(resp.to_wire())[1:], resp[1:])
-        self.assertEqual(resp.to_wire(), resp.raw_data)
+        self.assertEqual(Message.from_wire(resp.to_wire()), resp)
+        self.assertEqual(resp.to_wire(), raw_data)

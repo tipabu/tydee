@@ -297,7 +297,7 @@ class ResourceRecord(namedtuple('ResourceRecord', (
 
 
 class Message(namedtuple('Message', (
-        'raw_data', 'id', 'is_response', 'op_code', 'is_authoritative',
+        'id', 'is_response', 'op_code', 'is_authoritative',
         'is_truncated', 'recursion_desired', 'recursion_available',
         'reserved', 'authentic_data', 'checking_disabled', 'response_code',
         'questions', 'answers', 'name_servers', 'additional_records'))):
@@ -344,7 +344,7 @@ class Message(namedtuple('Message', (
             offset += n
 
         result = cls(
-            data, _id, is_response, op_code, is_authoritative,
+            _id, is_response, op_code, is_authoritative,
             is_truncated, recursion_desired, recursion_available, _reserved,
             authentic_data, checking_disabled, response_code,
             tuple(questions), tuple(answers), tuple(name_servers),
@@ -395,7 +395,7 @@ def Request(questions=(), op_code='Query'):
     if isinstance(questions, Question):
         questions = (questions, )
     return Message(
-        b'', random.randrange(1 << 16), is_response=False,
+        random.randrange(1 << 16), is_response=False,
         op_code=opcodeNameToValue[op_code],
         is_authoritative=False, is_truncated=False,
         recursion_desired=False, recursion_available=False,
@@ -408,7 +408,7 @@ def Request(questions=(), op_code='Query'):
 
 def Response(req, rcode='NoError', answers=()):
     return Message(
-        b'', req.id, is_response=True, op_code=req.op_code,
+        req.id, is_response=True, op_code=req.op_code,
         is_authoritative=False,
         is_truncated=False,  # TODO: when is this supposed to be true?
         recursion_desired=False, recursion_available=False,
