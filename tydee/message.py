@@ -196,6 +196,21 @@ def writeName(name, label_cache, offset):
     return b''.join(buf)
 
 
+def readStrings(data):
+    result = []
+    while data:
+        n = struct.unpack('B', data[:1])[0]
+        if len(data) < n + 1:
+            raise ValueError
+        result.append(data[1:n + 1])
+        data = data[n + 1:]
+    return result
+
+
+def writeStrings(data):
+    return b''.join([struct.pack('B', len(x)) + x for x in data])
+
+
 class Domain(tuple):
     __slots__ = ()
 
@@ -264,6 +279,10 @@ class ResourceRecord(namedtuple('ResourceRecord', (
         rrdata = data[offset + n + 10:offset + n + 10 + data_length]
         transform = {
             'CNAME': lambda: readName(data, offset + n + 10)[0],
+            'NS': lambda: readName(data, offset + n + 10)[0],
+            'MX': lambda: struct.unpack('!H', rrdata[:2]) + (
+                readName(data, offset + n + 12)[0],),
+            'TXT': lambda: readStrings(rrdata),
             'A': lambda: socket.inet_ntop(socket.AF_INET, rrdata),
             'AAAA': lambda: socket.inet_ntop(socket.AF_INET6, rrdata),
         }.get(typeValueToName[rrtype], lambda: rrdata)
@@ -277,6 +296,10 @@ class ResourceRecord(namedtuple('ResourceRecord', (
         offset += len(buf[0])
         transform = {
             'CNAME': lambda: writeName(self.data, label_cache, offset),
+            'NS': lambda: writeName(self.data, label_cache, offset),
+            'MX': lambda: struct.pack('!H', self.data[0]) + writeName(
+                self.data[1], label_cache, offset + 2),
+            'TXT': lambda: writeStrings(self.data),
             'A': lambda: socket.inet_pton(socket.AF_INET, self.data),
             'AAAA': lambda: socket.inet_pton(socket.AF_INET6, self.data),
         }.get(typeValueToName[self.rrtype], lambda: self.data)

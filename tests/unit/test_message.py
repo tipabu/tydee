@@ -101,6 +101,60 @@ class TestMessage(unittest.TestCase):
         self.assertLength(req.additional_records, 0)
         self.assertEqual(req.to_wire(), raw_data)
 
+    def test_request_parsing_4(self):
+        raw_data = get_raw('req4.dump')
+        req = Message.from_wire(raw_data)
+        self.assertFalse(req.is_response)
+        self.assertEqual(req.op_code_name, 'Query')
+        self.assertFalse(req.is_authoritative)
+        self.assertFalse(req.is_truncated)
+        self.assertTrue(req.recursion_desired)
+        self.assertFalse(req.recursion_available)
+        self.assertEqual(req.reserved, 0)
+        self.assertTrue(req.authentic_data)
+        self.assertFalse(req.checking_disabled)
+        self.assertEqual(req.response_code_name, 'NoError')
+        self.assertLength(req.questions, 1)
+        self.assertEqual(str(req.questions[0].name), 'swiftstack.com')
+        self.assertEqual(req.questions[0].qtype_name, '*')
+        self.assertEqual(req.questions[0].qclass_name, 'IN')
+        self.assertLength(req.answers, 0)
+        self.assertLength(req.name_servers, 0)
+        self.assertLength(req.additional_records, 1)
+        self.assertEqual(str(req.additional_records[0].rrname), '')
+        self.assertEqual(req.additional_records[0].rrtype_name, 'OPT')
+        self.assertEqual(req.additional_records[0].rrclass, 4096)
+        self.assertEqual(req.additional_records[0].ttl, 0)
+        self.assertEqual(req.additional_records[0].data, b'')
+        self.assertEqual(req.to_wire(), raw_data)
+
+    def test_request_parsing_5(self):
+        raw_data = get_raw('req5.dump')
+        req = Message.from_wire(raw_data)
+        self.assertFalse(req.is_response)
+        self.assertEqual(req.op_code_name, 'Query')
+        self.assertFalse(req.is_authoritative)
+        self.assertFalse(req.is_truncated)
+        self.assertTrue(req.recursion_desired)
+        self.assertFalse(req.recursion_available)
+        self.assertEqual(req.reserved, 0)
+        self.assertTrue(req.authentic_data)
+        self.assertFalse(req.checking_disabled)
+        self.assertEqual(req.response_code_name, 'NoError')
+        self.assertLength(req.questions, 1)
+        self.assertEqual(str(req.questions[0].name), 'not.mn')
+        self.assertEqual(req.questions[0].qtype_name, '*')
+        self.assertEqual(req.questions[0].qclass_name, 'IN')
+        self.assertLength(req.answers, 0)
+        self.assertLength(req.name_servers, 0)
+        self.assertLength(req.additional_records, 1)
+        self.assertEqual(str(req.additional_records[0].rrname), '')
+        self.assertEqual(req.additional_records[0].rrtype_name, 'OPT')
+        self.assertEqual(req.additional_records[0].rrclass, 4096)
+        self.assertEqual(req.additional_records[0].ttl, 0)
+        self.assertEqual(req.additional_records[0].data, b'')
+        self.assertEqual(req.to_wire(), raw_data)
+
     def test_response_parsing_1(self):
         raw_data = get_raw('resp1.dump')
         resp = Message.from_wire(raw_data)
@@ -200,5 +254,75 @@ class TestMessage(unittest.TestCase):
 
         self.assertLength(resp.name_servers, 0)
         self.assertLength(resp.additional_records, 0)
+        self.assertEqual(Message.from_wire(resp.to_wire()), resp)
+        self.assertEqual(resp.to_wire(), raw_data)
+
+    def test_response_parsing_4(self):
+        raw_data = get_raw('resp4.dump')
+        resp = Message.from_wire(raw_data)
+        self.assertEqual(resp.id, 58820)
+        self.assertTrue(resp.is_response)
+        self.assertEqual(resp.op_code_name, 'Query')
+        self.assertFalse(resp.is_authoritative)
+        self.assertFalse(resp.is_truncated)
+        self.assertTrue(resp.recursion_desired)
+        self.assertTrue(resp.recursion_available)
+        self.assertEqual(resp.reserved, 0)
+        self.assertFalse(resp.authentic_data)
+        self.assertFalse(resp.checking_disabled)
+        self.assertEqual(resp.response_code_name, 'NoError')
+        self.assertLength(resp.questions, 1)
+        self.assertEqual(str(resp.questions[0].name), 'swiftstack.com')
+        self.assertEqual(resp.questions[0].qtype_name, '*')
+        self.assertEqual(resp.questions[0].qclass_name, 'IN')
+
+        self.assertLength(resp.answers, 16)
+        self.assertEqual(str(resp.answers[0].rrname), 'swiftstack.com')
+        self.assertEqual(resp.answers[0].rrtype_name, 'TXT')
+        self.assertEqual(resp.answers[0].rrclass_name, 'IN')
+        self.assertEqual(resp.answers[0].ttl, 10800)
+        self.assertEqual(resp.answers[0].data,
+                         [b'google-site-verification='
+                          b'ajx9X6KjdiakKNnVjMrPnTTDbGutjrANAtVXiuNRd4A'])
+
+        self.assertEqual(str(resp.answers[1].rrname), 'swiftstack.com')
+        self.assertEqual(resp.answers[1].rrtype_name, 'TXT')
+        self.assertEqual(resp.answers[1].rrclass_name, 'IN')
+        self.assertEqual(resp.answers[1].ttl, 10800)
+        self.assertEqual(resp.answers[1].data,
+                         [b'google-site-verification='
+                          b'OepNUmht49q1y2e_iMTv5GLlL4kxJ42IUUXTS80eQe0'])
+
+        self.assertEqual(str(resp.answers[2].rrname), 'swiftstack.com')
+        self.assertEqual(resp.answers[2].rrtype_name, 'TXT')
+        self.assertEqual(resp.answers[2].rrclass_name, 'IN')
+        self.assertEqual(resp.answers[2].ttl, 10800)
+        self.assertEqual(resp.answers[2].data, [
+            b'v='
+            b'spf1 include:mktomail.com  include:_spf.google.com '
+            b'include:support.zendesk.com ~all'])
+
+        self.assertEqual(str(resp.answers[3].rrname), 'swiftstack.com')
+        self.assertEqual(resp.answers[3].rrtype_name, 'NS')
+        self.assertEqual(resp.answers[3].rrclass_name, 'IN')
+        self.assertEqual(resp.answers[3].ttl, 10800)
+        self.assertEqual(str(resp.answers[3].data), 'ns-202-b.gandi.net')
+
+        self.assertEqual(str(resp.answers[4].rrname), 'swiftstack.com')
+        self.assertEqual(resp.answers[4].rrtype_name, 'NS')
+        self.assertEqual(resp.answers[4].rrclass_name, 'IN')
+        self.assertEqual(resp.answers[4].ttl, 10800)
+        self.assertEqual(str(resp.answers[4].data), 'ns-156-c.gandi.net')
+
+        self.assertEqual(str(resp.answers[5].rrname), 'swiftstack.com')
+        self.assertEqual(resp.answers[5].rrtype_name, 'NS')
+        self.assertEqual(resp.answers[5].rrclass_name, 'IN')
+        self.assertEqual(resp.answers[5].ttl, 10800)
+        self.assertEqual(str(resp.answers[5].data), 'ns-200-a.gandi.net')
+        # ...
+
+        self.assertLength(resp.name_servers, 0)
+        self.assertLength(resp.additional_records, 10)
+        # ...
         self.assertEqual(Message.from_wire(resp.to_wire()), resp)
         self.assertEqual(resp.to_wire(), raw_data)
