@@ -159,7 +159,7 @@ def writeLabel(label):
     return struct.pack('B', len(label)) + label.encode('ascii')
 
 
-def readName(data, offset):
+def readName(data, offset, jumps=()):
     i = [offset]
 
     def doRead():
@@ -168,7 +168,10 @@ def readName(data, offset):
             if isLabelRef(data, i[0]):
                 ref_offset = 0x3fff & struct.unpack(
                     '!H', data[i[0]:i[0] + 2])[0]
-                for lbl in readName(data, ref_offset)[0]:
+                if ref_offset in jumps:
+                    raise ValueError('Name loop detected')
+                for lbl in readName(data, ref_offset,
+                                    jumps + (ref_offset,))[0]:
                     yield lbl
                 n = 2
                 s = False
@@ -414,11 +417,15 @@ class Message(namedtuple('Message', (
         return rcodeValueToName[self.response_code]
 
 
-def Request(questions=(), op_code='Query'):
+def Request(questions=(), op_code='Query', req_id=None):
     if isinstance(questions, Question):
         questions = (questions, )
+    if req_id is None:
+        req_id = random.randrange(1 << 16)
+    if isinstance(req_id, bytes):
+        req_id = struct.unpack('!H', req_id[:2])[0]
     return Message(
-        random.randrange(1 << 16), is_response=False,
+        req_id, is_response=False,
         op_code=opcodeNameToValue[op_code],
         is_authoritative=False, is_truncated=False,
         recursion_desired=False, recursion_available=False,

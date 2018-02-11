@@ -34,16 +34,42 @@ class TestServer(unittest.TestCase):
             self.fail('Server is not running.')
 
     def make_request(self, req):
-        self.client_socket.sendall(req.to_wire())
+        if not isinstance(req, bytes):
+            req = req.to_wire()
+        self.client_socket.sendall(req)
         data = self.client_socket.recv(1024)
+        # Check that ids match
+        self.assertEqual(req[:2], data[:2])
         resp = Message.from_wire(data)
-        self.assertEqual(req.id, resp.id)
         return resp
 
     def test_bad_request(self):
         resp = self.make_request(
             Request(Question('this does not make sense', 'A', 'IN')))
         self.assertEqual(resp.response_code_name, 'FormErr')
+        self.assertEqual(resp.answers, ())
+        self.assertEqual(resp.name_servers, ())
+        self.assertEqual(resp.additional_records, ())
+
+    def test_short_request(self):
+        # Just an id
+        msg = b'w\xb7'
+        resp = self.make_request(msg)
+        self.assertEqual(resp.response_code_name, 'FormErr')
+        self.assertEqual(resp.questions, ())
+        self.assertEqual(resp.answers, ())
+        self.assertEqual(resp.name_servers, ())
+        self.assertEqual(resp.additional_records, ())
+
+    def test_bad_recursion(self):
+        # See
+        #   - http://www.kb.cert.org./vuls/id/23495
+        #   - https://nvd.nist.gov/vuln/detail/CVE-2000-0333
+        msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+               b'\x03foo\x03bar\xc0\x0c\x00\x01\x00\x01')
+        resp = self.make_request(msg)
+        self.assertEqual(resp.response_code_name, 'FormErr')
+        self.assertEqual(resp.questions, ())  # !!
         self.assertEqual(resp.answers, ())
         self.assertEqual(resp.name_servers, ())
         self.assertEqual(resp.additional_records, ())

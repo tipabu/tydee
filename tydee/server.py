@@ -4,6 +4,7 @@ import logging
 import signal
 import socket
 import string
+import struct
 import sys
 
 try:
@@ -12,7 +13,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from .message import (
-    Message, ResourceRecord, Domain, Response,
+    Message, ResourceRecord, Domain, Request, Response,
     NXDomainResponse, FormErrResponse, ServFailResponse, NotImpResponse,
 )
 
@@ -142,8 +143,10 @@ class Server(object):
 
     def handle(self, req):
         logging.debug('Received request %r', req)
-        if req.op_code_name != 'Query' or len(req.questions) != 1:
+        if req.op_code_name != 'Query' or len(req.questions) > 1:
             return NotImpResponse(req)
+        if not req.questions:
+            return FormErrResponse(req)
         q = req.questions[0]
         if q.qclass_name != 'IN' or q.qtype_name not in (
                 'A', 'AAAA', 'CNAME', 'TXT', '*'):
@@ -191,7 +194,13 @@ class Server(object):
                 if errno.errorcode[e.errno] == 'EINTR':
                     continue
                 raise
-            request = Message.from_wire(data)
+            try:
+                request = Message.from_wire(data)
+            except (ValueError, struct.error):
+                if len(data) < 2:  # not even enough for an id
+                    continue
+                # Create a dummy request that will FormErr
+                request = Request(req_id=data[:2])
             try:
                 response = self.handle(request)
             except Exception:
