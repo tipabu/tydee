@@ -3,7 +3,6 @@ from collections import namedtuple
 import random
 import socket
 import struct
-import sys
 
 try:
     basestring
@@ -137,18 +136,12 @@ rcodeNameToValue = {
 rcodeValueToName = {v: k for k, v in rcodeNameToValue.items()}
 
 
-def readByte(data, offset):
-    if sys.version_info < (3,):
-        return ord(data[offset])
-    return data[offset]
-
-
 def isLabelRef(data, offset):
-    return readByte(data, offset) & 0xc0 == 0xc0
+    return struct.unpack('B', data[offset:offset + 1])[0] & 0xc0 == 0xc0
 
 
 def readLabel(data, offset):
-    n = readByte(data, offset) + 1
+    n = struct.unpack('B', data[offset:offset + 1])[0] + 1
     if n > 64:
         raise NotImplementedError('got %02x at offset %d' % (n, offset))
     label = data[offset + 1:offset + n].decode('ascii')
@@ -170,6 +163,8 @@ def readName(data, offset, jumps=()):
                     '!H', data[i[0]:i[0] + 2])[0]
                 if ref_offset in jumps:
                     raise ValueError('Name loop detected')
+                if ref_offset > len(data):
+                    raise ValueError('Bad offset')
                 for lbl in readName(data, ref_offset,
                                     jumps + (ref_offset,))[0]:
                     yield lbl

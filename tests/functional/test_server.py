@@ -61,12 +61,32 @@ class TestServer(unittest.TestCase):
         self.assertEqual(resp.name_servers, ())
         self.assertEqual(resp.additional_records, ())
 
-    def test_bad_recursion(self):
+    def test_infinite_recursion(self):
         # See
         #   - http://www.kb.cert.org./vuls/id/23495
         #   - https://nvd.nist.gov/vuln/detail/CVE-2000-0333
         msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
                b'\x03foo\x03bar\xc0\x0c\x00\x01\x00\x01')
+        resp = self.make_request(msg)
+        self.assertEqual(resp.response_code_name, 'FormErr')
+        self.assertEqual(resp.questions, ())  # !!
+        self.assertEqual(resp.answers, ())
+        self.assertEqual(resp.name_servers, ())
+        self.assertEqual(resp.additional_records, ())
+
+    def test_bad_reference(self):
+        msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+               b'\x03foo\x03bar\xcf\x0c\x00\x01\x00\x01')
+        resp = self.make_request(msg)
+        self.assertEqual(resp.response_code_name, 'FormErr')
+        self.assertEqual(resp.questions, ())  # !!
+        self.assertEqual(resp.answers, ())
+        self.assertEqual(resp.name_servers, ())
+        self.assertEqual(resp.additional_records, ())
+
+    def test_extra_data(self):
+        msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+               b'\x03foo\x03bar\x00\x00\x01\x00\x01too much data!')
         resp = self.make_request(msg)
         self.assertEqual(resp.response_code_name, 'FormErr')
         self.assertEqual(resp.questions, ())  # !!
