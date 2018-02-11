@@ -65,9 +65,25 @@ class TestServer(unittest.TestCase):
         resp = self.make_request(
             Request(Question('some.crazy.domain', '*', 'IN')))
         self.assertEqual(resp.response_code_name, 'NoError')
-        self.assertEqual(resp.answers, (ResourceRecord(
-            Domain('some.crazy.domain'), 'CNAME', 'IN', 300,
-            Domain('container.auth-test.swift.dev')),))
+        self.assertEqual(set(resp.answers), set((
+            ResourceRecord(Domain('some.crazy.domain'), 'CNAME', 'IN', 300,
+                           Domain('container.auth-test.swift.dev')),
+            ResourceRecord(Domain('some.crazy.domain'), 'TXT', 'IN', 300,
+                           (b'foo=bar',)),
+            ResourceRecord(Domain('some.crazy.domain'), 'TXT', 'IN', 300,
+                           (b'baz=quux',)),
+        )))
+
+    def test_txt_only(self):
+        resp = self.make_request(
+            Request(Question('some.crazy.domain', 'TXT', 'IN')))
+        self.assertEqual(resp.response_code_name, 'NoError')
+        self.assertEqual(set(resp.answers), set((
+            ResourceRecord(Domain('some.crazy.domain'), 'TXT', 'IN', 300,
+                           (b'foo=bar',)),
+            ResourceRecord(Domain('some.crazy.domain'), 'TXT', 'IN', 300,
+                           (b'baz=quux',)),
+        )))
 
     def test_cname_only(self):
         resp = self.make_request(

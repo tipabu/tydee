@@ -75,6 +75,19 @@ def load_aaaa_records(parser):
     return records
 
 
+def load_txt_records(parser):
+    records = []
+    if not parser.has_section('txt'):
+        return records
+    for name, txt in parser.items('txt'):
+        if not valid_domain_name(name):
+            raise ValueError('invalid domain name %r' % name)
+        if not isinstance(txt, bytes):
+            txt = txt.encode('latin1')
+        records.extend((name, (x,)) for x in txt.split(b'\n'))
+    return records
+
+
 BIND_IP = '127.0.0.1'
 BIND_PORT = 5354
 RETRIES = 2
@@ -133,7 +146,7 @@ class Server(object):
             return NotImpResponse(req)
         q = req.questions[0]
         if q.qclass_name != 'IN' or q.qtype_name not in (
-                'A', 'AAAA', 'CNAME', '*'):
+                'A', 'AAAA', 'CNAME', 'TXT', '*'):
             return NotImpResponse(req)
         if not valid_domain_name(req.questions[0].name):
             return FormErrResponse(req)
@@ -151,7 +164,8 @@ class Server(object):
             return Response(req, answers=tuple(
                 rr for rr in rrs
                 if q.qtype_name == '*' or q.qtype == rr.rrtype
-                or rr.rrtype_name in ('CNAME', 'TXT')))
+                or (q.qtype_name in ('A', 'AAAA') and
+                    rr.rrtype_name == 'CNAME')))
 
         return NXDomainResponse(req)
 
@@ -203,12 +217,16 @@ class Server(object):
         else:
             logging.debug('Reloading config from %s', self.conf_file)
         parser = configparser.RawConfigParser()
-        parser.read(self.conf_file)
+        if sys.version_info >= (3,):
+            parser.read(self.conf_file, encoding='latin1')
+        else:
+            parser.read(self.conf_file)
         try:
             new_db = {
                 'CNAME': load_cname_records(parser),
                 'A': load_a_records(parser),
                 'AAAA': load_aaaa_records(parser),
+                'TXT': load_txt_records(parser),
             }
         except Exception as e:
             logging.error('Error loading db: %s', e)

@@ -282,25 +282,25 @@ class TestMessage(unittest.TestCase):
         self.assertEqual(resp.answers[0].rrclass_name, 'IN')
         self.assertEqual(resp.answers[0].ttl, 10800)
         self.assertEqual(resp.answers[0].data,
-                         [b'google-site-verification='
-                          b'ajx9X6KjdiakKNnVjMrPnTTDbGutjrANAtVXiuNRd4A'])
+                         (b'google-site-verification='
+                          b'ajx9X6KjdiakKNnVjMrPnTTDbGutjrANAtVXiuNRd4A',))
 
         self.assertEqual(str(resp.answers[1].rrname), 'swiftstack.com')
         self.assertEqual(resp.answers[1].rrtype_name, 'TXT')
         self.assertEqual(resp.answers[1].rrclass_name, 'IN')
         self.assertEqual(resp.answers[1].ttl, 10800)
         self.assertEqual(resp.answers[1].data,
-                         [b'google-site-verification='
-                          b'OepNUmht49q1y2e_iMTv5GLlL4kxJ42IUUXTS80eQe0'])
+                         (b'google-site-verification='
+                          b'OepNUmht49q1y2e_iMTv5GLlL4kxJ42IUUXTS80eQe0',))
 
         self.assertEqual(str(resp.answers[2].rrname), 'swiftstack.com')
         self.assertEqual(resp.answers[2].rrtype_name, 'TXT')
         self.assertEqual(resp.answers[2].rrclass_name, 'IN')
         self.assertEqual(resp.answers[2].ttl, 10800)
-        self.assertEqual(resp.answers[2].data, [
+        self.assertEqual(resp.answers[2].data, (
             b'v='
             b'spf1 include:mktomail.com  include:_spf.google.com '
-            b'include:support.zendesk.com ~all'])
+            b'include:support.zendesk.com ~all',))
 
         self.assertEqual(str(resp.answers[3].rrname), 'swiftstack.com')
         self.assertEqual(resp.answers[3].rrtype_name, 'NS')

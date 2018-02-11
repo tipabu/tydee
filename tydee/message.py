@@ -204,11 +204,11 @@ def readStrings(data):
             raise ValueError
         result.append(data[1:n + 1])
         data = data[n + 1:]
-    return result
+    return tuple(result)
 
 
 def writeStrings(data):
-    return b''.join([struct.pack('B', len(x)) + x for x in data])
+    return b''.join(struct.pack('B', len(x)) + x for x in data)
 
 
 class Domain(tuple):
