@@ -143,7 +143,7 @@ def isLabelRef(data, offset):
 def readLabel(data, offset):
     n = struct.unpack('B', data[offset:offset + 1])[0] + 1
     if n > 64:
-        raise NotImplementedError('got %02x at offset %d' % (n, offset))
+        raise ValueError('got label length %d at offset %d' % (n - 1, offset))
     label = data[offset + 1:offset + n].decode('ascii')
     return label, n
 

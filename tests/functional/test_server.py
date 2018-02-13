@@ -51,15 +51,17 @@ class TestServer(unittest.TestCase):
         self.assertEqual(resp.name_servers, ())
         self.assertEqual(resp.additional_records, ())
 
-    def test_short_request(self):
-        # Just an id
-        msg = b'w\xb7'
-        resp = self.make_request(msg)
+    def assert_form_err(self, resp):
         self.assertEqual(resp.response_code_name, 'FormErr')
-        self.assertEqual(resp.questions, ())
+        self.assertEqual(resp.questions, ())  # !!
         self.assertEqual(resp.answers, ())
         self.assertEqual(resp.name_servers, ())
         self.assertEqual(resp.additional_records, ())
+
+    def test_short_request(self):
+        msg = b'w\xb7'  # Just an id
+        resp = self.make_request(msg)
+        self.assert_form_err(resp)
 
     def test_infinite_recursion(self):
         # See
@@ -68,31 +70,31 @@ class TestServer(unittest.TestCase):
         msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
                b'\x03foo\x03bar\xc0\x0c\x00\x01\x00\x01')
         resp = self.make_request(msg)
-        self.assertEqual(resp.response_code_name, 'FormErr')
-        self.assertEqual(resp.questions, ())  # !!
-        self.assertEqual(resp.answers, ())
-        self.assertEqual(resp.name_servers, ())
-        self.assertEqual(resp.additional_records, ())
+        self.assert_form_err(resp)
 
     def test_bad_reference(self):
         msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
                b'\x03foo\x03bar\xcf\x0c\x00\x01\x00\x01')
         resp = self.make_request(msg)
-        self.assertEqual(resp.response_code_name, 'FormErr')
-        self.assertEqual(resp.questions, ())  # !!
-        self.assertEqual(resp.answers, ())
-        self.assertEqual(resp.name_servers, ())
-        self.assertEqual(resp.additional_records, ())
+        self.assert_form_err(resp)
+
+    def test_label_too_long(self):
+        msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+               b'\x03foo\x3fbar\xcf\x0c\x00\x01\x00\x01')
+        resp = self.make_request(msg)
+        self.assert_form_err(resp)
+
+    def test_bad_label_length(self):
+        msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
+               b'\x03foo\x40' + (b'a' * 64) + b'\x00\x00\x01\x00\x01')
+        resp = self.make_request(msg)
+        self.assert_form_err(resp)
 
     def test_extra_data(self):
         msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
                b'\x03foo\x03bar\x00\x00\x01\x00\x01too much data!')
         resp = self.make_request(msg)
-        self.assertEqual(resp.response_code_name, 'FormErr')
-        self.assertEqual(resp.questions, ())  # !!
-        self.assertEqual(resp.answers, ())
-        self.assertEqual(resp.name_servers, ())
-        self.assertEqual(resp.additional_records, ())
+        self.assert_form_err(resp)
 
     def test_not_implemented(self):
         def assertNotImpl(resp):
