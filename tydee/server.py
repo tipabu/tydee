@@ -89,8 +89,8 @@ def load_txt_records(parser):
     return records
 
 
-BIND_IP = '127.0.0.1'
-BIND_PORT = 5354
+DEFAULT_BIND_IP = '127.0.0.1'
+DEFAULT_BIND_PORT = 5354
 RETRIES = 2
 
 
@@ -137,6 +137,7 @@ class RRDB(object):
 class Server(object):
     def __init__(self, conf_file):
         self.conf_file = conf_file
+        self.bind_ip = self.bind_port = None
         self.running = False
         self.db = None
         self.reload()
@@ -181,9 +182,11 @@ class Server(object):
         except ValueError:
             pass  # Non-main thread, probably
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.bind((BIND_IP, BIND_PORT))
+        s.bind((self.bind_ip, self.bind_port))
         s.settimeout(0.05)
-        logging.info('Listening on udp://[%s]:%d' % (BIND_IP, BIND_PORT))
+        self.bind_ip, self.bind_port = s.getsockname()
+        logging.info('Listening on udp://[%s]:%d',
+                     self.bind_ip, self.bind_port)
         while self.running:
             request = None
             try:
@@ -230,6 +233,16 @@ class Server(object):
             parser.read(self.conf_file, encoding='latin1')
         else:
             parser.read(self.conf_file)
+
+        try:
+            bind_ip = parser.get('dns-server', 'bind_ip')
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            bind_ip = DEFAULT_BIND_IP
+        try:
+            bind_port = parser.getint('dns-server', 'bind_port')
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            bind_port = DEFAULT_BIND_PORT
+
         try:
             new_db = {
                 'CNAME': load_cname_records(parser),
@@ -243,6 +256,16 @@ class Server(object):
                 raise
         else:
             logging.debug('Loaded db %r', new_db)
+            if self.db:
+                if bind_ip != self.bind_ip:
+                    logging.warning('bind_ip changed from %s to %s; restart '
+                                    'required', self.bind_ip, bind_ip)
+                if bind_port != self.bind_port:
+                    logging.warning('bind_port changed from %s to %s; restart '
+                                    'required', self.bind_port, bind_port)
+            else:
+                self.bind_ip = bind_ip
+                self.bind_port = bind_port
             self.db = RRDB(new_db)
 
 
