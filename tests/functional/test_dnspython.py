@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 import unittest
 try:
     import dns.resolver
@@ -20,9 +21,13 @@ class TestServer(unittest.TestCase):
         cls.server_thread.daemon = True
         cls.server_thread.start()
 
+        time.sleep(0.01)  # Give server a chance to start
         cls.resolver = dns.resolver.Resolver()
-        cls.resolver.nameservers = ['127.0.0.1']
-        cls.resolver.nameserver_ports = {'127.0.0.1': 5354}
+        cls.resolver.timeout = 0.1
+        cls.resolver.lifetime = 0.1
+        cls.resolver.nameservers = [cls.server.bind_ip]
+        cls.resolver.nameserver_ports = {
+            cls.server.bind_ip: cls.server.bind_port}
 
     @classmethod
     def tearDownClass(cls):

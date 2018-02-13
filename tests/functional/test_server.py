@@ -18,9 +18,14 @@ class TestServer(unittest.TestCase):
         cls.server_thread.start()
 
         time.sleep(0.01)  # Give the server a chance to start
-        cls.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        cls.client_socket.connect(('127.0.0.1', 5354))
-        cls.client_socket.settimeout(1.0)
+        if ':' in cls.server.bind_ip:
+            cls.client_socket = socket.socket(socket.AF_INET6,
+                                              socket.SOCK_DGRAM)
+        else:
+            cls.client_socket = socket.socket(socket.AF_INET,
+                                              socket.SOCK_DGRAM)
+        cls.client_socket.connect((cls.server.bind_ip, cls.server.bind_port))
+        cls.client_socket.settimeout(0.1)
 
     @classmethod
     def tearDownClass(cls):
