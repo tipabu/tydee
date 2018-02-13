@@ -182,10 +182,13 @@ class Server(object):
             signal.signal(signal.SIGHUP, self.reload)
         except ValueError:
             pass  # Non-main thread, probably
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if ':' in self.bind_ip:
+            s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        else:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind((self.bind_ip, self.bind_port))
         s.settimeout(0.05)
-        self.bind_ip, self.bind_port = s.getsockname()
+        self.bind_ip, self.bind_port = s.getsockname()[:2]
         LOGGER.info('Listening on udp://[%s]:%d',
                     self.bind_ip, self.bind_port)
         while self.running:
