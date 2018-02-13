@@ -92,6 +92,7 @@ def load_txt_records(parser):
 DEFAULT_BIND_IP = '127.0.0.1'
 DEFAULT_BIND_PORT = 5354
 RETRIES = 2
+LOGGER = logging.getLogger('tydee.server')
 
 
 class RRDB(object):
@@ -143,7 +144,7 @@ class Server(object):
         self.reload()
 
     def handle(self, req):
-        logging.debug('Received request %r', req)
+        LOGGER.debug('Received request %r', req)
         if req.op_code_name != 'Query' or len(req.questions) > 1:
             return NotImpResponse(req)
         if not req.questions:
@@ -185,8 +186,8 @@ class Server(object):
         s.bind((self.bind_ip, self.bind_port))
         s.settimeout(0.05)
         self.bind_ip, self.bind_port = s.getsockname()
-        logging.info('Listening on udp://[%s]:%d',
-                     self.bind_ip, self.bind_port)
+        LOGGER.info('Listening on udp://[%s]:%d',
+                    self.bind_ip, self.bind_port)
         while self.running:
             request = None
             try:
@@ -207,7 +208,7 @@ class Server(object):
             try:
                 response = self.handle(request)
             except Exception:
-                logging.exception('Error handling request %r', request)
+                LOGGER.exception('Error handling request %r', request)
                 response = ServFailResponse(request)
             if response:
                 for x in range(RETRIES):
@@ -225,9 +226,9 @@ class Server(object):
 
     def reload(self, signum=None, frame=None):
         if not self.db:
-            logging.debug('Loading config from %s', self.conf_file)
+            LOGGER.debug('Loading config from %s', self.conf_file)
         else:
-            logging.debug('Reloading config from %s', self.conf_file)
+            LOGGER.debug('Reloading config from %s', self.conf_file)
         parser = configparser.RawConfigParser()
         if sys.version_info >= (3,):
             parser.read(self.conf_file, encoding='latin1')
@@ -251,18 +252,18 @@ class Server(object):
                 'TXT': load_txt_records(parser),
             }
         except Exception as e:
-            logging.error('Error loading db: %s', e)
+            LOGGER.error('Error loading db: %s', e)
             if not self.db:
                 raise
         else:
-            logging.debug('Loaded db %r', new_db)
+            LOGGER.debug('Loaded db %r', new_db)
             if self.db:
                 if bind_ip != self.bind_ip:
-                    logging.warning('bind_ip changed from %s to %s; restart '
-                                    'required', self.bind_ip, bind_ip)
-                if bind_port != self.bind_port:
-                    logging.warning('bind_port changed from %s to %s; restart '
-                                    'required', self.bind_port, bind_port)
+                    LOGGER.warning('bind_ip changed from %s to %s; restart '
+                                   'required', self.bind_ip, bind_ip)
+                if bind_port and bind_port != self.bind_port:
+                    LOGGER.warning('bind_port changed from %s to %s; restart '
+                                   'required', self.bind_port, bind_port)
             else:
                 self.bind_ip = bind_ip
                 self.bind_port = bind_port
@@ -272,6 +273,6 @@ class Server(object):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) < 2:
-        logging.error('Expected at least one argument: conf_file')
+        LOGGER.error('Expected at least one argument: conf_file')
         exit(1)
     Server(sys.argv[1]).run()
