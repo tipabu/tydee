@@ -51,7 +51,7 @@ def load_a_records(parser):
     for name, addrs in parser.items('ipv4'):
         if not valid_domain_name(name):
             raise ValueError('invalid domain name %r' % name)
-        for addr in addrs.split('\n'):
+        for addr in addrs.strip().split('\n'):
             try:
                 socket.inet_pton(socket.AF_INET, addr)
             except socket.error:
@@ -67,7 +67,7 @@ def load_aaaa_records(parser):
     for name, addrs in parser.items('ipv6'):
         if not valid_domain_name(name):
             raise ValueError('invalid domain name %r' % name)
-        for addr in addrs.split('\n'):
+        for addr in addrs.strip().split('\n'):
             try:
                 socket.inet_pton(socket.AF_INET6, addr)
             except socket.error:
@@ -85,7 +85,7 @@ def load_txt_records(parser):
             raise ValueError('invalid domain name %r' % name)
         if not isinstance(txt, bytes):
             txt = txt.encode('latin1')
-        records.extend((name, (x,)) for x in txt.split(b'\n'))
+        records.extend((name, (x,)) for x in txt.strip().split(b'\n'))
     return records
 
 
