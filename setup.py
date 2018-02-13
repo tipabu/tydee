@@ -8,4 +8,11 @@ setuptools.setup(
     author='Tim Burke',
     author_email='tim.burke@gmail.com',
     description='A tiny DNS server',
+    classifiers=[
+        'Topic :: Internet :: Name Service (DNS)',
+        'Intended Audience :: Developers',
+        'Environment :: Console',
+        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3',
+    ],
 )
