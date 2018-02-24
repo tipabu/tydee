@@ -21,7 +21,12 @@ from .message import (
 def valid_domain_name(name, allow_wildcard=True):
     ld = string.ascii_letters + string.digits
     ldh = ld + '-'
-    if isinstance(name, str):
+    if isinstance(name, bytes):
+        try:
+            name = name.decode('ascii')
+        except UnicodeDecodeError:
+            return False
+    if isinstance(name, type('')):  # go-go unicode literals!
         name = name.split('.')
     if allow_wildcard and name and name[0] in ('*', '**'):
         name = name[1:]
