@@ -68,6 +68,10 @@ class TestServer(unittest.TestCase):
         resp = self.make_request(msg)
         self.assert_form_err(resp)
 
+        msg = b'w'  # Not even an id
+        with self.assertRaises(socket.timeout):
+            self.make_request(msg)
+
     def test_infinite_recursion(self):
         # See
         #   - http://www.kb.cert.org./vuls/id/23495
@@ -98,6 +102,12 @@ class TestServer(unittest.TestCase):
     def test_extra_data(self):
         msg = (b'w\xb7\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00'
                b'\x03foo\x03bar\x00\x00\x01\x00\x01too much data!')
+        resp = self.make_request(msg)
+        self.assert_form_err(resp)
+
+    def test_not_enough_queries(self):
+        msg = (b'w\xb7\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00'
+               b'\x03foo\x03bar\x00\x00\x01\x00\x01')
         resp = self.make_request(msg)
         self.assert_form_err(resp)
 
