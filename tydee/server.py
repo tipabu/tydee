@@ -28,7 +28,7 @@ def valid_domain_name(name, allow_wildcard=True):
             return False
     if isinstance(name, type('')):  # go-go unicode literals!
         name = name.split('.')
-    if allow_wildcard and name and name[0] in ('*', '**'):
+    if allow_wildcard and name and name[0] == '*':
         name = name[1:]
     return all(
         label and all(c in ldh for c in label) and
@@ -114,10 +114,10 @@ class RRDB(object):
 
     def lookup(self, name):
         t = self.tree
-        wildcard = t.get('**')
+        wildcard = t.get('*')
         for i, label in enumerate(reversed(name)):
-            if '**' in t:
-                wildcard = t['**']
+            if '*' in t:
+                wildcard = t['*']
             if label not in t:
                 break
             t = t[label]
@@ -128,11 +128,7 @@ class RRDB(object):
                 return tuple(
                     ResourceRecord(name, rrtype, 'IN', 300, data)
                     for rrtype, data in t['.'])
-        if '*' in t and i + 1 == len(name):
-            return tuple(
-                ResourceRecord(name, rrtype, 'IN', 300, data)
-                for rrtype, data in t['*']['.'])
-        elif wildcard:
+        if wildcard:
             return tuple(
                 ResourceRecord(name, rrtype, 'IN', 300, data)
                 for rrtype, data in wildcard['.'])
