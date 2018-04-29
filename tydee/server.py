@@ -181,8 +181,9 @@ class Server(object):
             signal.signal(signal.SIGTERM, self.shutdown)
             signal.signal(signal.SIGINT, self.shutdown)
             signal.signal(signal.SIGHUP, self.reload)
-        except ValueError:
-            pass  # Non-main thread, probably
+        except ValueError as e:
+            if str(e) != 'signal only works in main thread':
+                raise
         if ':' in self.bind_ip:
             s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
         else:
