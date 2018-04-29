@@ -14,7 +14,7 @@ class BaseTestWithServer(unittest.TestCase):
         cls.server_thread.daemon = True
         cls.server_thread.start()
         # Give the server a chance to start
-        if not cls.server.bound_event.wait(0.1):
+        if not cls.server.running_event.wait(0.1):
             raise cls.failureException('Server failed to start')
 
     @classmethod

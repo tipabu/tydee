@@ -141,9 +141,8 @@ class Server(object):
     def __init__(self, conf_file):
         self.conf_file = conf_file
         self.bind_ip = self.bind_port = None
-        self.running = False
         self.db = None
-        self.bound_event = threading.Event()
+        self.running_event = threading.Event()
         self.reload()
 
     def handle(self, req):
@@ -178,7 +177,6 @@ class Server(object):
         return NXDomainResponse(req)
 
     def run(self):
-        self.running = True
         try:
             signal.signal(signal.SIGTERM, self.shutdown)
             signal.signal(signal.SIGINT, self.shutdown)
@@ -192,12 +190,12 @@ class Server(object):
         s.bind((self.bind_ip, self.bind_port))
         s.settimeout(0.05)
         self.bind_ip, self.bind_port = s.getsockname()[:2]
-        self.bound_event.set()
+        self.running_event.set()
         LOGGER.info('Listening on udp://[%s]:%d',
                     self.bind_ip, self.bind_port)
 
         # Done with setup, let's handle requests
-        while self.running:
+        while self.running_event.is_set():
             request = None
             try:
                 data, addr = s.recvfrom(1024)
@@ -228,11 +226,10 @@ class Server(object):
                     else:
                         break
             # else, no response warranted
-        self.bound_event.clear()
         s.close()
 
     def shutdown(self, signum=None, frame=None):
-        self.running = False
+        self.running_event.clear()
 
     def reload(self, signum=None, frame=None):
         if not self.db:
