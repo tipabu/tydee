@@ -22,6 +22,41 @@ def with_temp_file(func):
     return wrapper
 
 
+class TestIPAddresses(unittest.TestCase):
+    def test_ipv4(self):
+        a = tydee.server.IPv4Address('127.0.0.1')
+        self.assertEqual(a.__bytes__(), b'\x7f\x00\x00\x01')
+        self.assertEqual(str(a), '127.0.0.1')
+        self.assertEqual(int(a), 0x7f000001)
+
+        a = tydee.server.IPv4Address(0x7f000001)
+        self.assertEqual(a.__bytes__(), b'\x7f\x00\x00\x01')
+        self.assertEqual(str(a), '127.0.0.1')
+        self.assertEqual(int(a), 0x7f000001)
+
+        a = tydee.server.IPv4Address(b'\x0a\x00\x00\x00')
+        self.assertEqual(a.__bytes__(), b'\x0a\x00\x00\x00')
+        self.assertEqual(str(a), '10.0.0.0')
+        self.assertEqual(str(tydee.server.IPv4Address(int(a))), '10.0.0.0')
+        self.assertEqual(str(a | ((1 << 16) - 1)), '10.0.255.255')
+
+    def test_ipv6(self):
+        a = tydee.server.IPv6Address('2001:db8::')
+        self.assertEqual(a.__bytes__(), b'\x20\x01\x0d\xb8' + 12 * b'\x00')
+        self.assertEqual(str(a), '2001:db8::')
+        self.assertEqual(int(a), 0x20010db8000000000000000000000000)
+
+        a = tydee.server.IPv6Address(0x20010db8000000000000000000000000)
+        self.assertEqual(a.__bytes__(), b'\x20\x01\x0d\xb8' + 12 * b'\x00')
+        self.assertEqual(str(a), '2001:db8::')
+        self.assertEqual(int(a), 0x20010db8000000000000000000000000)
+
+        a = tydee.server.IPv6Address(b'\x20\x01\x0d\xb8' + 12 * b'\x00')
+        self.assertEqual(a.__bytes__(), b'\x20\x01\x0d\xb8' + 12 * b'\x00')
+        self.assertEqual(str(a), '2001:db8::')
+        self.assertEqual(int(a), 0x20010db8000000000000000000000000)
+
+
 class TestValidDomainName(unittest.TestCase):
     def test_bytes(self):
         self.assertTrue(tydee.server.valid_domain_name(b'some.domain.name'))
