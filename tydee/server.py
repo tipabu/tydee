@@ -238,15 +238,24 @@ class Server(object):
         else:
             LOGGER.debug('Reloading config from %s', self.conf_file)
         parser = configparser.RawConfigParser()
-        if sys.version_info >= (3,):
-            parser.read(self.conf_file, encoding='latin1')
-        else:
-            parser.read(self.conf_file)
+        try:
+            if sys.version_info >= (3,):
+                parser.read(self.conf_file, encoding='latin1')
+            else:
+                parser.read(self.conf_file)
+        except configparser.MissingSectionHeaderError:
+            raise ValueError
 
         try:
             bind_ip = parser.get('dns-server', 'bind_ip')
         except (configparser.NoSectionError, configparser.NoOptionError):
             bind_ip = DEFAULT_BIND_IP
+        try:
+            socket.inet_pton(
+                socket.AF_INET6 if ':' in bind_ip else socket.AF_INET, bind_ip)
+        except socket.error:
+            raise ValueError
+
         try:
             bind_port = parser.getint('dns-server', 'bind_port')
         except (configparser.NoSectionError, configparser.NoOptionError):

@@ -1,9 +1,25 @@
 from __future__ import unicode_literals
+import functools
 import io
+import tempfile
 import textwrap
 import unittest
 
 import tydee.server
+
+
+def with_temp_file(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        tmp_file = None
+        try:
+            tmp_file = tempfile.NamedTemporaryFile()
+            args += (tmp_file,)
+            return func(*args, **kwargs)
+        finally:
+            if tmp_file:
+                tmp_file.close()
+    return wrapper
 
 
 class TestValidDomainName(unittest.TestCase):
@@ -114,3 +130,33 @@ class TestConfigParsing(unittest.TestCase):
         self.assertEqual(tydee.server.load_a_records(parser), [])
         self.assertEqual(tydee.server.load_aaaa_records(parser), [])
         self.assertEqual(tydee.server.load_txt_records(parser), [])
+
+    @with_temp_file
+    def test_valid_server_options(self, tmp_file):
+        tmp_file.write('''
+[dns-server]
+bind_ip = 123.45.67.89
+bind_port = 9876
+        '''.strip().encode('ascii'))
+        tmp_file.flush()
+        server = tydee.server.Server(tmp_file.name)
+        self.assertEqual(server.bind_ip, '123.45.67.89')
+        self.assertEqual(server.bind_port, 9876)
+
+    @with_temp_file
+    def test_invalid_server_options(self, tmp_file):
+        def do_test(conf_line):
+            tmp_file.truncate(0)
+            conf = '[dns-server]\n' + conf_line
+            tmp_file.write(conf.encode('ascii'))
+            tmp_file.flush()
+            with self.assertRaises(ValueError):
+                tydee.server.Server(tmp_file.name)
+
+        do_test('bind_ip = ')
+        do_test('bind_ip = asdf')
+        do_test('bind_ip = 1.2.3.4.5')
+        do_test('bind_ip = 1:::2')
+        do_test('bind_port = asdf')
+        do_test('bind_port = 100000')
+        do_test('bind_port = -1')
