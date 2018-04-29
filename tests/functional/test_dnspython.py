@@ -1,6 +1,3 @@
-import os
-import threading
-import time
 import unittest
 try:
     import dns.resolver
@@ -8,35 +5,20 @@ try:
 except ImportError:
     dnspython_installed = False
 
-import tydee.server
+from . import BaseTestWithServer
 
 
-class TestServer(unittest.TestCase):
+class TestServer(BaseTestWithServer):
     @classmethod
     @unittest.skipIf(not dnspython_installed, 'dnspython is not installed')
     def setUpClass(cls):
-        conf_file = os.path.join(os.path.dirname(__file__), 'dns.conf')
-        cls.server = tydee.server.Server(conf_file)
-        cls.server_thread = threading.Thread(target=cls.server.run)
-        cls.server_thread.daemon = True
-        cls.server_thread.start()
-
-        time.sleep(0.01)  # Give server a chance to start
+        super(TestServer, cls).setUpClass()
         cls.resolver = dns.resolver.Resolver()
         cls.resolver.timeout = 0.1
         cls.resolver.lifetime = 0.1
         cls.resolver.nameservers = [cls.server.bind_ip]
         cls.resolver.nameserver_ports = {
             cls.server.bind_ip: cls.server.bind_port}
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.server.shutdown()
-        cls.server_thread.join()
-
-    def setUp(self):
-        if not self.server_thread.is_alive():
-            self.fail('Server is not running.')
 
     def test_cname_only(self):
         result = self.resolver.query('some.crazy.domain', 'CNAME')

@@ -1,23 +1,14 @@
-import os
 import socket
-import threading
-import time
-import unittest
 
-import tydee.server
 from tydee.message import Message, Request, Question, ResourceRecord, Domain
 
+from . import BaseTestWithServer
 
-class TestServer(unittest.TestCase):
+
+class TestServer(BaseTestWithServer):
     @classmethod
     def setUpClass(cls):
-        conf_file = os.path.join(os.path.dirname(__file__), 'dns.conf')
-        cls.server = tydee.server.Server(conf_file)
-        cls.server_thread = threading.Thread(target=cls.server.run)
-        cls.server_thread.daemon = True
-        cls.server_thread.start()
-
-        time.sleep(0.01)  # Give the server a chance to start
+        super(TestServer, cls).setUpClass()
         if ':' in cls.server.bind_ip:
             cls.client_socket = socket.socket(socket.AF_INET6,
                                               socket.SOCK_DGRAM)
@@ -31,12 +22,7 @@ class TestServer(unittest.TestCase):
     def tearDownClass(cls):
         cls.client_socket.close()
         cls.client_socket = None
-        cls.server.shutdown()
-        cls.server_thread.join()
-
-    def setUp(self):
-        if not self.server_thread.is_alive():
-            self.fail('Server is not running.')
+        super(TestServer, cls).tearDownClass()
 
     def make_request(self, req):
         if not isinstance(req, bytes):

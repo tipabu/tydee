@@ -6,6 +6,7 @@ import socket
 import string
 import struct
 import sys
+import threading
 
 try:
     import configparser
@@ -142,6 +143,7 @@ class Server(object):
         self.bind_ip = self.bind_port = None
         self.running = False
         self.db = None
+        self.bound_event = threading.Event()
         self.reload()
 
     def handle(self, req):
@@ -190,8 +192,11 @@ class Server(object):
         s.bind((self.bind_ip, self.bind_port))
         s.settimeout(0.05)
         self.bind_ip, self.bind_port = s.getsockname()[:2]
+        self.bound_event.set()
         LOGGER.info('Listening on udp://[%s]:%d',
                     self.bind_ip, self.bind_port)
+
+        # Done with setup, let's handle requests
         while self.running:
             request = None
             try:
@@ -223,6 +228,7 @@ class Server(object):
                     else:
                         break
             # else, no response warranted
+        self.bound_event.clear()
         s.close()
 
     def shutdown(self, signum=None, frame=None):
