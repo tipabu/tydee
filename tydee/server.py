@@ -238,7 +238,7 @@ class Server(object):
         try:
             signal.signal(signal.SIGTERM, self.shutdown)
             signal.signal(signal.SIGINT, self.shutdown)
-            signal.signal(signal.SIGHUP, self.reload)
+            signal.signal(signal.SIGHUP, self.handle_sighup)
         except ValueError as e:
             if str(e) != 'signal only works in main thread':
                 raise
@@ -290,7 +290,13 @@ class Server(object):
     def shutdown(self, signum=None, frame=None):
         self.running_event.clear()
 
-    def reload(self, signum=None, frame=None):
+    def handle_sighup(self, signum=None, frame=None):
+        try:
+            self.reload()
+        except Exception as err:
+            LOGGER.exception('Failed to reload config: %s', err)
+
+    def reload(self):
         if not self.db:
             LOGGER.debug('Loading config from %s', self.conf_file)
         else:
