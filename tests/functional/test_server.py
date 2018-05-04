@@ -1,4 +1,5 @@
 import socket
+import unittest
 
 from tydee.message import Message, Request, Question, ResourceRecord, Domain
 
@@ -9,13 +10,14 @@ class TestServer(BaseTestWithServer):
     @classmethod
     def setUpClass(cls):
         super(TestServer, cls).setUpClass()
-        if ':' in cls.server.bind_ip:
+        server_address = cls.get_server_address()
+        if ':' in server_address:
             cls.client_socket = socket.socket(socket.AF_INET6,
                                               socket.SOCK_DGRAM)
         else:
             cls.client_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
-        cls.client_socket.connect((cls.server.bind_ip, cls.server.bind_port))
+        cls.client_socket.connect((server_address, cls.server.bind_port))
         cls.client_socket.settimeout(0.1)
 
     @classmethod
@@ -220,3 +222,21 @@ class TestServer(BaseTestWithServer):
             Request(Question('other.domain', 'CNAME', 'IN')))
         self.assertEqual(resp.response_code_name, 'NoError')
         self.assertEqual(resp.answers, ())
+
+
+class TestServerWithIPv4Client(TestServer):
+    @classmethod
+    def get_server_address(cls):
+        return '127.0.0.1'
+
+
+class TestServerWithIPv6Client(TestServer):
+    @classmethod
+    def get_server_address(cls):
+        return '::1'
+
+    @classmethod
+    def check_can_run(cls):
+        if ':' not in cls.server.bind_ip:
+            raise unittest.SkipTest('%s requires an IPv6 bind_ip' % (
+                cls.__name__, ))

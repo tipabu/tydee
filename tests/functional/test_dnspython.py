@@ -16,9 +16,9 @@ class TestServer(BaseTestWithServer):
         cls.resolver = dns.resolver.Resolver()
         cls.resolver.timeout = 0.1
         cls.resolver.lifetime = 0.1
-        cls.resolver.nameservers = [cls.server.bind_ip]
-        cls.resolver.nameserver_ports = {
-            cls.server.bind_ip: cls.server.bind_port}
+        server_address = cls.get_server_address()
+        cls.resolver.nameservers = [server_address]
+        cls.resolver.nameserver_ports = {server_address: cls.server.bind_port}
 
     def test_cname_only(self):
         result = self.resolver.query('some.crazy.domain', 'CNAME')
@@ -59,3 +59,21 @@ class TestServer(BaseTestWithServer):
             self.resolver.query('crazy.domain', 'AAAA')
         with self.assertRaises(dns.resolver.NoAnswer):
             self.resolver.query('other.domain', 'CNAME')
+
+
+class TestServerWithIPv4Client(TestServer):
+    @classmethod
+    def get_server_address(cls):
+        return '127.0.0.1'
+
+
+class TestServerWithIPv6Client(TestServer):
+    @classmethod
+    def get_server_address(cls):
+        return '::1'
+
+    @classmethod
+    def check_can_run(cls):
+        if ':' not in cls.server.bind_ip:
+            raise unittest.SkipTest('%s requires an IPv6 bind_ip' % (
+                cls.__name__, ))

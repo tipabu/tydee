@@ -37,7 +37,10 @@ class IPv6Address(object):
                     (self.WIDTH - 4 - x) * 8)) & 0xffffffff)
                 for x in range(0, self.WIDTH, 4))
         else:
-            self._packed = socket.inet_pton(self.AF, address)
+            try:
+                self._packed = socket.inet_pton(self.AF, address)
+            except socket.error:
+                raise ValueError('Bad IP address %r' % (address, ))
 
     def __bytes__(self):
         return self._packed
@@ -244,6 +247,8 @@ class Server(object):
                 raise
         if ':' in self.bind_ip:
             s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            if IPv6Address(self.bind_ip) == IPv6Address('::'):
+                s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
         else:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind((self.bind_ip, self.bind_port))
