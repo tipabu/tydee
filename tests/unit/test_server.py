@@ -56,6 +56,14 @@ class TestIPAddresses(unittest.TestCase):
         self.assertEqual(str(a), '2001:db8::')
         self.assertEqual(int(a), 0x20010db8000000000000000000000000)
 
+        addr = '::ffff:127.0.0.1'
+        self.assertEqual(len(addr), tydee.server.IPv6Address.WIDTH)
+        a = tydee.server.IPv6Address(addr)
+        self.assertEqual(a.__bytes__(),
+                         b'\x00' * 10 + b'\xff' * 2 + b'\x7f\x00\x00\x01')
+        self.assertEqual(str(a), '::ffff:127.0.0.1')
+        self.assertEqual(int(a), 0x00000000000000000000ffff7f000001)
+
 
 class TestValidDomainName(unittest.TestCase):
     def test_bytes(self):

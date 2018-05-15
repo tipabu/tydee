@@ -29,17 +29,19 @@ class IPv6Address(object):
     __slots__ = ('_packed',)
 
     def __init__(self, address):
-        if isinstance(address, bytes) and len(address) == self.WIDTH:
-            self._packed = address
-        elif isinstance(address, int_types):
+        if isinstance(address, int_types):
             self._packed = b''.join(
                 struct.pack('!I', (address >> (
                     (self.WIDTH - 4 - x) * 8)) & 0xffffffff)
                 for x in range(0, self.WIDTH, 4))
-        else:
-            try:
-                self._packed = socket.inet_pton(self.AF, address)
-            except socket.error:
+            return
+
+        try:
+            self._packed = socket.inet_pton(self.AF, address)
+        except (socket.error, TypeError):
+            if isinstance(address, bytes) and len(address) == self.WIDTH:
+                self._packed = address
+            else:
                 raise ValueError('Bad IP address %r' % (address, ))
 
     def __bytes__(self):
