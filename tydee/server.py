@@ -76,6 +76,12 @@ class IPv6Address(object):
             return False
         return self._packed == other._packed
 
+    def __le__(self, other):
+        return self._packed <= other._packed
+
+    def __ge__(self, other):
+        return self._packed >= other._packed
+
 
 class IPv4Address(IPv6Address):
     WIDTH = 4
