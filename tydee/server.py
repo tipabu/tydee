@@ -245,7 +245,7 @@ class Server(object):
             signal.signal(signal.SIGINT, self.shutdown)
             signal.signal(signal.SIGHUP, self.handle_sighup)
         except ValueError as e:
-            if str(e) != 'signal only works in main thread':
+            if 'signal only works in main thread' not in str(e):
                 raise
         if ':' in self.bind_ip:
             s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
