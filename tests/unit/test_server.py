@@ -64,6 +64,34 @@ class TestIPAddresses(unittest.TestCase):
         self.assertEqual(str(a), '::ffff:127.0.0.1')
         self.assertEqual(int(a), 0x00000000000000000000ffff7f000001)
 
+    def test_comparisons(self):
+        addrs = [tydee.server.IPv4Address(x) for x in (
+            '127.0.0.0', '127.0.0.1', '127.0.0.255')]
+
+        self.assertTrue(addrs[0] <= addrs[0])
+        self.assertTrue(addrs[0] >= addrs[0])
+        self.assertFalse(addrs[0] < addrs[0])
+        self.assertFalse(addrs[0] > addrs[0])
+
+        self.assertTrue(addrs[0] < addrs[1])
+        self.assertFalse(addrs[2] < addrs[1])
+        self.assertFalse(addrs[0] > addrs[1])
+        self.assertTrue(addrs[2] > addrs[1])
+
+        self.assertTrue(addrs[0] < addrs[1] < addrs[2])
+        self.assertTrue(addrs[2] > addrs[1] > addrs[0])
+
+        a4 = tydee.server.IPv4Address('127.0.0.1')
+        a6 = tydee.server.IPv6Address('::1')
+        with self.assertRaises(TypeError):
+            a4 < a6
+        with self.assertRaises(TypeError):
+            a4 > a6
+        with self.assertRaises(TypeError):
+            a6 < a4
+        with self.assertRaises(TypeError):
+            a6 > a4
+
 
 class TestValidDomainName(unittest.TestCase):
     def test_bytes(self):

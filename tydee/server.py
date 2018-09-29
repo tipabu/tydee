@@ -76,10 +76,24 @@ class IPv6Address(object):
             return False
         return self._packed == other._packed
 
+    def __lt__(self, other):
+        if type(self) != type(other):
+            raise TypeError('unorderable types')
+        return self._packed < other._packed
+
     def __le__(self, other):
+        if type(self) != type(other):
+            raise TypeError('unorderable types')
         return self._packed <= other._packed
 
+    def __gt__(self, other):
+        if type(self) != type(other):
+            raise TypeError('unorderable types')
+        return self._packed > other._packed
+
     def __ge__(self, other):
+        if type(self) != type(other):
+            raise TypeError('unorderable types')
         return self._packed >= other._packed
 
 
