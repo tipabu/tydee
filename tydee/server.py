@@ -185,7 +185,7 @@ class RRDB(object):
     def lookup(self, name):
         t = self.tree
         wildcard = t.get('*')
-        for i, label in enumerate(reversed(name)):
+        for label in reversed(name):
             if '*' in t:
                 wildcard = t['*']
             if label not in t:
@@ -290,7 +290,7 @@ class Server(object):
                 LOGGER.exception('Error handling request %r', request)
                 response = ServFailResponse(request)
             if response:
-                for x in range(RETRIES):
+                for _ in range(RETRIES):
                     try:
                         s.sendto(response.to_wire(), addr)
                     except socket.timeout:
