@@ -206,13 +206,31 @@ class RRDB(object):
             return None
 
 
-class Server(object):
+class BaseServer(object):
     def __init__(self, conf_file):
         self.conf_file = conf_file
         self.bind_ip = self.bind_port = None
         self.db = None
         self.running_event = threading.Event()
         self.reload()
+
+    @property
+    def protocol(self):
+        raise NotImplemented
+
+    def handle_data(self, data):
+        try:
+            request = Message.from_wire(data)
+        except (ValueError, struct.error):
+            if len(data) < 2:  # not even enough for an id
+                return None
+            # Create a dummy request that will FormErr
+            request = Request(req_id=data[:2])
+        try:
+            return self.handle(request)
+        except Exception:
+            LOGGER.exception('Error handling request %r', request)
+            return ServFailResponse(request)
 
     def handle(self, req):
         LOGGER.debug('Received request %r', req)
@@ -245,68 +263,16 @@ class Server(object):
 
         return NXDomainResponse(req)
 
-    def run(self):
-        if ':' in self.bind_ip:
-            s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
-            if IPv6Address(self.bind_ip) == IPv6Address('::'):
-                s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
-        else:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.bind((self.bind_ip, self.bind_port))
-        s.settimeout(0.05)
-        self.bind_ip, self.bind_port = s.getsockname()[:2]
-        self.running_event.set()
-        LOGGER.info('Listening on udp://[%s]:%d',
-                    self.bind_ip, self.bind_port)
-
-        # Done with setup, let's handle requests
-        while self.running_event.is_set():
-            request = None
-            try:
-                data, addr = s.recvfrom(1024)
-            except socket.timeout:
-                continue
-            except socket.error as e:
-                if errno.errorcode[e.errno] == 'EINTR':
-                    continue
-                raise
-            try:
-                request = Message.from_wire(data)
-            except (ValueError, struct.error):
-                if len(data) < 2:  # not even enough for an id
-                    continue
-                # Create a dummy request that will FormErr
-                request = Request(req_id=data[:2])
-            try:
-                response = self.handle(request)
-            except Exception:
-                LOGGER.exception('Error handling request %r', request)
-                response = ServFailResponse(request)
-            if response:
-                for _ in range(RETRIES):
-                    try:
-                        s.sendto(response.to_wire(), addr)
-                    except socket.timeout:
-                        continue
-                    else:
-                        break
-            # else, no response warranted
-        s.close()
-
     def shutdown(self, signum=None, frame=None):
         self.running_event.clear()
 
-    def handle_sighup(self, signum=None, frame=None):
-        try:
-            self.reload()
-        except Exception as err:
-            LOGGER.exception('Failed to reload config: %s', err)
-
     def reload(self):
         if not self.db:
-            LOGGER.debug('Loading config from %s', self.conf_file)
+            LOGGER.debug('Loading config from %s (%s)',
+                         self.conf_file, self.protocol)
         else:
-            LOGGER.debug('Reloading config from %s', self.conf_file)
+            LOGGER.debug('Reloading config from %s (%s)',
+                         self.conf_file, self.protocol)
         parser = configparser.RawConfigParser()
         try:
             if sys.version_info >= (3,):
@@ -343,7 +309,7 @@ class Server(object):
             if not self.db:
                 raise
         else:
-            LOGGER.debug('Loaded db %r', new_db)
+            LOGGER.debug('Loaded db %r (%s)', new_db, self.protocol)
             if self.db:
                 if bind_ip != self.bind_ip:
                     LOGGER.warning('bind_ip changed from %s to %s; restart '
@@ -357,33 +323,139 @@ class Server(object):
             self.db = RRDB(new_db)
 
 
+class UDPServer(BaseServer):
+    protocol = 'udp'
+
+    def run(self):
+        if ':' in self.bind_ip:
+            s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+            if IPv6Address(self.bind_ip) == IPv6Address('::'):
+                s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        else:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.bind((self.bind_ip, self.bind_port))
+        s.settimeout(0.05)
+        self.bind_ip, self.bind_port = s.getsockname()[:2]
+        self.running_event.set()
+        LOGGER.info('Listening on udp://[%s]:%d',
+                    self.bind_ip, self.bind_port)
+
+        # Done with setup, let's handle requests
+        while self.running_event.is_set():
+            try:
+                data, addr = s.recvfrom(1024)
+            except socket.timeout:
+                continue
+            except socket.error as e:
+                if errno.errorcode[e.errno] == 'EINTR':
+                    continue
+                raise
+
+            response = self.handle_data(data)
+
+            if response:
+                for _ in range(RETRIES):
+                    try:
+                        s.sendto(response.to_wire(), addr)
+                    except socket.timeout:
+                        continue
+                    else:
+                        break
+            # else, no response warranted
+        s.close()
+
+
+class TCPServer(BaseServer):
+    protocol = 'tcp'
+
+    def run(self):
+        if ':' in self.bind_ip:
+            s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+            if IPv6Address(self.bind_ip) == IPv6Address('::'):
+                s.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+        else:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((self.bind_ip, self.bind_port))
+        s.settimeout(0.05)
+        s.listen(1)
+        self.bind_ip, self.bind_port = s.getsockname()[:2]
+        self.running_event.set()
+        LOGGER.info('Listening on tcp://[%s]:%d',
+                    self.bind_ip, self.bind_port)
+
+        # Done with setup, let's handle requests
+        while self.running_event.is_set():
+            try:
+                conn, addr = s.accept()
+            except socket.timeout:
+                continue
+            conn.settimeout(0.5)
+
+            try:
+                buf = b''
+                while len(buf) < 2:
+                    buf += conn.recv(2 - len(buf))
+                sz = struct.unpack('!H', buf)[0]
+                data = conn.recv(sz)
+            except socket.timeout:
+                continue
+            except socket.error as e:
+                if errno.errorcode[e.errno] == 'EINTR':
+                    continue
+                raise
+
+            response = self.handle_data(data)
+
+            if response:
+                for _ in range(RETRIES):
+                    try:
+                        response = response.to_wire()
+                        conn.sendall(struct.pack('!H', len(response)))
+                        conn.sendall(response)
+                    except socket.timeout:
+                        continue
+                    else:
+                        break
+            # else, no response warranted
+        s.close()
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     if len(sys.argv) < 2:
         LOGGER.error('Expected at least one argument: conf_file')
         exit(1)
-    server = Server(sys.argv[1])
-    thread = threading.Thread(target=server.run, name='server-thread')
+    servers = [
+        UDPServer(sys.argv[1]),
+        TCPServer(sys.argv[1]),
+    ]
+    threads = [
+        threading.Thread(target=servers[0].run, name='udp-server-thread'),
+        threading.Thread(target=servers[1].run, name='tcp-server-thread'),
+    ]
 
     def shutdown(signum=None, frame=None):
-        server.shutdown()
+        for server in servers:
+            server.shutdown()
 
     def reload(signum=None, frame=None):
-        try:
-            server.reload()
-        except Exception as err:
-            LOGGER.exception('Failed to reload config: %s', err)
+        for server in servers:
+            try:
+                server.reload()
+            except Exception as err:
+                LOGGER.exception('Failed to reload config: %s', err)
 
     signal.signal(signal.SIGTERM, shutdown)
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGHUP, reload)
 
-    thread.start()
-
-    while thread.is_alive():
+    for thread in threads:
+        thread.start()
+    while any(thread.is_alive() for thread in threads):
         # Note that thread.join() is not interrupted for signal handling!
         # Since we only expect thread live-ness to change as a result of
         # SIGTERM/SIGINT, wait for at least one signal before checking
         # thread statuses.
         signal.pause()
-        thread.join(0.1)  # Ought to be longer than a socket timeout
+        for thread in threads:
+            thread.join(0.1)  # Ought to be longer than a socket timeout

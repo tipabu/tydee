@@ -182,7 +182,7 @@ bind_ip = 123.45.67.89
 bind_port = 9876
         '''.strip().encode('ascii'))
         tmp_file.flush()
-        server = tydee.server.Server(tmp_file.name)
+        server = tydee.server.UDPServer(tmp_file.name)
         self.assertEqual(server.bind_ip, '123.45.67.89')
         self.assertEqual(server.bind_port, 9876)
 
@@ -194,7 +194,7 @@ bind_port = 9876
             tmp_file.write(conf.encode('ascii'))
             tmp_file.flush()
             with self.assertRaises(ValueError):
-                tydee.server.Server(tmp_file.name)
+                tydee.server.UDPServer(tmp_file.name)
 
         do_test('bind_ip = ')
         do_test('bind_ip = asdf')

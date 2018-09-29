@@ -21,7 +21,7 @@ class BaseTestWithServer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         conf_file = os.path.join(os.path.dirname(__file__), 'dns.conf')
-        cls.server = tydee.server.Server(conf_file)
+        cls.server = tydee.server.UDPServer(conf_file)
         cls.check_can_run()
         cls.server_thread = threading.Thread(target=cls.server.run)
         cls.server_thread.daemon = True
