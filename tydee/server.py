@@ -246,13 +246,6 @@ class Server(object):
         return NXDomainResponse(req)
 
     def run(self):
-        try:
-            signal.signal(signal.SIGTERM, self.shutdown)
-            signal.signal(signal.SIGINT, self.shutdown)
-            signal.signal(signal.SIGHUP, self.handle_sighup)
-        except ValueError as e:
-            if 'signal only works in main thread' not in str(e):
-                raise
         if ':' in self.bind_ip:
             s = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
             if IPv6Address(self.bind_ip) == IPv6Address('::'):
@@ -369,4 +362,28 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         LOGGER.error('Expected at least one argument: conf_file')
         exit(1)
-    Server(sys.argv[1]).run()
+    server = Server(sys.argv[1])
+    thread = threading.Thread(target=server.run, name='server-thread')
+
+    def shutdown(signum=None, frame=None):
+        server.shutdown()
+
+    def reload(signum=None, frame=None):
+        try:
+            server.reload()
+        except Exception as err:
+            LOGGER.exception('Failed to reload config: %s', err)
+
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+    signal.signal(signal.SIGHUP, reload)
+
+    thread.start()
+
+    while thread.is_alive():
+        # Note that thread.join() is not interrupted for signal handling!
+        # Since we only expect thread live-ness to change as a result of
+        # SIGTERM/SIGINT, wait for at least one signal before checking
+        # thread statuses.
+        signal.pause()
+        thread.join(0.1)  # Ought to be longer than a socket timeout
