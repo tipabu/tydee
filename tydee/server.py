@@ -32,6 +32,10 @@ class BaseServer(object):
         self.bind_ip = self.bind_port = None
         self.db = None
         self.running_event = threading.Event()
+        self.own_thread = threading.Thread(
+            target=self.run,
+            name='%s-server-thread' % self.protocol)
+        self.own_thread.daemon = True
         self.reload()
 
     @property
@@ -83,8 +87,20 @@ class BaseServer(object):
 
         return NXDomainResponse(req)
 
+    def start(self):
+        self.own_thread.start()
+        if not self.running_event.wait(0.1):
+            raise RuntimeError('Server failed to start after 0.1s')
+
+    def is_alive(self):
+        self.own_thread.join(0.01)
+        return self.own_thread.is_alive()
+
     def shutdown(self, signum=None, frame=None):
         self.running_event.clear()
+        self.own_thread.join(0.1)
+        if self.own_thread.is_alive():
+            raise RuntimeError('Server failed to stop after 0.1s')
 
     def reload(self):
         if not self.db:
@@ -244,10 +260,6 @@ if __name__ == '__main__':
         UDPServer(sys.argv[1]),
         TCPServer(sys.argv[1]),
     ]
-    threads = [
-        threading.Thread(target=servers[0].run, name='udp-server-thread'),
-        threading.Thread(target=servers[1].run, name='tcp-server-thread'),
-    ]
 
     def shutdown(signum=None, frame=None):
         for server in servers:
@@ -264,13 +276,11 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGHUP, reload)
 
-    for thread in threads:
-        thread.start()
-    while any(thread.is_alive() for thread in threads):
+    for server in servers:
+        server.start()
+    while any(server.is_alive() for server in servers):
         # Note that thread.join() is not interrupted for signal handling!
         # Since we only expect thread live-ness to change as a result of
         # SIGTERM/SIGINT, wait for at least one signal before checking
         # thread statuses.
         signal.pause()
-        for thread in threads:
-            thread.join(0.1)  # Ought to be longer than a socket timeout
