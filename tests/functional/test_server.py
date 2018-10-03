@@ -1,7 +1,10 @@
+import errno
 import socket
+import struct
 import unittest
 
 from tydee.message import Message, Request, Question, ResourceRecord, Domain
+import tydee.server
 
 from . import BaseTestWithServer
 
@@ -240,3 +243,72 @@ class TestServerWithIPv6Client(TestServer):
         if ':' not in cls.server.bind_ip:
             raise unittest.SkipTest('%s requires an IPv6 bind_ip' % (
                 cls.__name__, ))
+
+
+class TestTCPServer(TestServer):
+    server_class = tydee.server.TCPServer
+    client_socket = None
+
+    @classmethod
+    def setUpClass(cls):
+        # NB: skip TestServer's setUpClass!
+        super(TestServer, cls).setUpClass()
+        cls.reconnect()
+
+    @classmethod
+    def reconnect(cls):
+        server_address = cls.get_server_address()
+        if cls.client_socket:
+            cls.client_socket.close()
+        if ':' in server_address:
+            cls.client_socket = socket.socket(socket.AF_INET6,
+                                              socket.SOCK_STREAM)
+        else:
+            cls.client_socket = socket.socket(socket.AF_INET,
+                                              socket.SOCK_STREAM)
+        cls.client_socket.connect((server_address, cls.server.bind_port))
+        cls.client_socket.settimeout(0.1)
+
+    def make_request(self, req, includes_length=False):
+        if not isinstance(req, bytes):
+            req = req.to_wire()
+        if not includes_length:
+            req = struct.pack('!H', len(req)) + req
+        self.client_socket.sendall(req)
+        sz = struct.unpack('!H', tydee.server.recvall(
+            self.client_socket, 2))[0]
+        data = tydee.server.recvall(self.client_socket, sz)
+        # Check that ids match
+        self.assertEqual(req[2:4], data[:2])
+        resp = Message.from_wire(data)
+        return resp
+
+    def test_short_request(self):
+        # TCP gets some special forms of short requests
+        msg = b'w\xb7'  # Just an id
+        resp = self.make_request(msg)
+        self.assert_form_err(resp)
+
+        msg = b'w'  # Not even a whole id
+        with self.assertRaises(socket.error) as raised:
+            self.make_request(msg)
+        self.assertEqual(raised.exception.errno, errno.ECONNRESET)
+        self.reconnect()
+
+        msg = b''  # Not even any id!
+        with self.assertRaises(socket.error) as raised:
+            self.make_request(msg)
+        self.assertEqual(raised.exception.errno, errno.ECONNRESET)
+        self.reconnect()
+
+        msg = b'\xff\xff'  # Very much not the right length
+        with self.assertRaises(socket.error) as raised:
+            self.make_request(msg, True)
+        self.assertEqual(raised.exception.errno, errno.ECONNRESET)
+        self.reconnect()
+
+        msg = b'\x01'  # Not even enough for a length
+        with self.assertRaises(socket.error) as raised:
+            self.make_request(msg, True)
+        self.assertEqual(raised.exception.errno, errno.ECONNRESET)
+        self.reconnect()

@@ -26,6 +26,20 @@ RETRIES = 2
 LOGGER = logging.getLogger('tydee.server')
 
 
+def recvall(sock, bufsize):
+    '''Read bufsize bytes from a socket
+
+    ...or raise a socket error; whichever comes first'''
+    buf = []
+    sz = 0
+    while sz < bufsize:
+        buf.append(sock.recv(bufsize - sz))
+        sz += len(buf[-1])
+        if not buf[-1]:
+            raise socket.error(errno.ECONNRESET, 'Incomplete read: %r' % buf)
+    return b''.join(buf)
+
+
 class BaseServer(object):
     def __init__(self, conf_file):
         self.conf_file = conf_file
@@ -220,34 +234,45 @@ class TCPServer(BaseServer):
                 conn, addr = s.accept()
             except socket.timeout:
                 continue
-            conn.settimeout(0.5)
+            conn.settimeout(0.05)
+            LOGGER.debug('Accepted connection from %r', addr)
 
-            try:
-                buf = b''
-                while len(buf) < 2:
-                    buf += conn.recv(2 - len(buf))
-                sz = struct.unpack('!H', buf)[0]
-                data = conn.recv(sz)
-            except socket.timeout:
-                continue
-            except socket.error as e:
-                if errno.errorcode[e.errno] == 'EINTR':
-                    continue
-                raise
+            while True:
+                try:
+                    sz = recvall(conn, 2)
+                    sz = struct.unpack('!H', sz)[0]
+                except (socket.timeout, socket.error):
+                    break
 
-            response = self.handle_data(data)
+                if sz < 2:
+                    break
+                try:
+                    req_id = recvall(conn, 2)
+                except (socket.timeout, socket.error):
+                    break
 
-            if response:
-                for _ in range(RETRIES):
+                try:
+                    data = recvall(conn, sz - 2)
+                except (socket.timeout, socket.error):
+                    response = FormErrResponse(Request(req_id=req_id))
+                    response = response.to_wire()
                     try:
-                        response = response.to_wire()
                         conn.sendall(struct.pack('!H', len(response)))
                         conn.sendall(response)
-                    except socket.timeout:
-                        continue
-                    else:
-                        break
-            # else, no response warranted
+                    except socket.error as e:
+                        pass  # best effort
+                    break
+
+                response = self.handle_data(req_id + data)
+                LOGGER.debug('Sending response %r', response)
+                response = response.to_wire()
+                try:
+                    conn.sendall(struct.pack('!H', len(response)))
+                    conn.sendall(response)
+                except (socket.timeout, socket.error):
+                    break
+            LOGGER.debug('Closing connection to %r', addr)
+            conn.close()
         s.close()
 
 

@@ -2,9 +2,12 @@ import os
 import unittest
 
 import tydee.server
+import tydee.util.addr
 
 
 class BaseTestWithServer(unittest.TestCase):
+    server_class = tydee.server.UDPServer
+
     @classmethod
     def get_server_address(cls):
         if ':' in cls.server.bind_ip:
@@ -20,7 +23,7 @@ class BaseTestWithServer(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         conf_file = os.path.join(os.path.dirname(__file__), 'dns.conf')
-        cls.server = tydee.server.UDPServer(conf_file)
+        cls.server = cls.server_class(conf_file)
         cls.check_can_run()
         cls.server.start()
 
