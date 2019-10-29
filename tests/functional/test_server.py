@@ -164,10 +164,11 @@ class TestServer(BaseTestWithServer):
             Domain('container.auth-test.swift.dev')))
         self.assertEqual({
             (str(rr.rrname), rr.rrtype_name, rr.rrclass_name, str(rr.data))
-            for rr in resp.answers[1:]}, {
-                ('container.auth-test.swift.dev', 'A', 'IN', '127.0.0.1'),
-                ('container.auth-test.swift.dev', 'A', 'IN', '127.0.1.1'),
-            })
+            for rr in resp.answers[1:]
+        }, {
+            ('container.auth-test.swift.dev', 'A', 'IN', '127.0.0.1'),
+            ('container.auth-test.swift.dev', 'A', 'IN', '127.0.1.1'),
+        })
 
     def test_cname_ipv6(self):
         resp = self.make_request(
@@ -186,10 +187,11 @@ class TestServer(BaseTestWithServer):
         self.assertEqual(resp.response_code_name, 'NoError')
         self.assertEqual({
             (str(rr.rrname), rr.rrtype_name, rr.rrclass_name, str(rr.data))
-            for rr in resp.answers}, {
-                ('blah.swift.dev', 'A', 'IN', '127.0.0.1'),
-                ('blah.swift.dev', 'A', 'IN', '127.0.1.1'),
-            })
+            for rr in resp.answers
+        }, {
+            ('blah.swift.dev', 'A', 'IN', '127.0.0.1'),
+            ('blah.swift.dev', 'A', 'IN', '127.0.1.1'),
+        })
 
     def test_wildcard_ipv6(self):
         resp = self.make_request(
