@@ -54,11 +54,11 @@ class BaseServer(object):
 
     @property
     def protocol(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def timeout(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def handle_data(self, data):
         try:

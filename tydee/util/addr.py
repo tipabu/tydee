@@ -29,11 +29,11 @@ class BaseIPAddress(object):
 
     @property
     def WIDTH(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def AF(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def __bytes__(self):
         return self._packed
