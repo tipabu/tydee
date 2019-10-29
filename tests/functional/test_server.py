@@ -21,7 +21,7 @@ class TestServer(BaseTestWithServer):
             cls.client_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_DGRAM)
         cls.client_socket.connect((server_address, cls.server.bind_port))
-        cls.client_socket.settimeout(0.1)
+        cls.client_socket.settimeout(cls.server.timeout * 1.1)
 
     @classmethod
     def tearDownClass(cls):
@@ -267,7 +267,7 @@ class TestTCPServer(TestServer):
             cls.client_socket = socket.socket(socket.AF_INET,
                                               socket.SOCK_STREAM)
         cls.client_socket.connect((server_address, cls.server.bind_port))
-        cls.client_socket.settimeout(0.1)
+        cls.client_socket.settimeout(cls.server.timeout * 1.1)
 
     def make_request(self, req, includes_length=False):
         if not isinstance(req, bytes):

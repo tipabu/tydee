@@ -56,6 +56,10 @@ class BaseServer(object):
     def protocol(self):
         raise NotImplemented
 
+    @property
+    def timeout(self):
+        raise NotImplemented
+
     def handle_data(self, data):
         try:
             request = Message.from_wire(data)
@@ -170,6 +174,7 @@ class BaseServer(object):
 
 class UDPServer(BaseServer):
     protocol = 'udp'
+    timeout = 0.05
 
     def run(self):
         if ':' in self.bind_ip:
@@ -179,7 +184,7 @@ class UDPServer(BaseServer):
         else:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.bind((self.bind_ip, self.bind_port))
-        s.settimeout(0.05)
+        s.settimeout(self.timeout)
         self.bind_ip, self.bind_port = s.getsockname()[:2]
         self.running_event.set()
         LOGGER.info('Listening on udp://[%s]:%d',
@@ -212,6 +217,7 @@ class UDPServer(BaseServer):
 
 class TCPServer(BaseServer):
     protocol = 'tcp'
+    timeout = 0.1
 
     def run(self):
         if ':' in self.bind_ip:
@@ -234,7 +240,7 @@ class TCPServer(BaseServer):
                 conn, addr = s.accept()
             except socket.timeout:
                 continue
-            conn.settimeout(0.05)
+            conn.settimeout(self.timeout)
             LOGGER.debug('Accepted connection from %r', addr)
 
             while True:
