@@ -265,7 +265,7 @@ class TCPServer(BaseServer):
                     try:
                         conn.sendall(struct.pack('!H', len(response)))
                         conn.sendall(response)
-                    except socket.error as e:
+                    except socket.error:
                         pass  # best effort
                     break
 
