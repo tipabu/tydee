@@ -1,13 +1,7 @@
-from __future__ import print_function, unicode_literals
 from collections import namedtuple
 import random
 import socket
 import struct
-
-try:
-    basestring
-except NameError:
-    basestring = str
 
 typeNameToValue = {
     'A':           1,  # a host address
@@ -213,7 +207,7 @@ class Domain(tuple):
     __slots__ = ()
 
     def __new__(cls, name):
-        if isinstance(name, basestring):
+        if isinstance(name, str):
             name = name.split('.')
         return super(Domain, cls).__new__(cls, name)
 
@@ -228,11 +222,11 @@ class Question(namedtuple('Question', ('name', 'qtype', 'qclass'))):
     __slots__ = ()
 
     def __new__(cls, name, qtype, qclass):
-        if isinstance(name, basestring):
+        if isinstance(name, str):
             name = Domain(name)
-        if isinstance(qtype, basestring):
+        if isinstance(qtype, str):
             qtype = qTypeNameToValue[qtype]
-        if isinstance(qclass, basestring):
+        if isinstance(qclass, str):
             qclass = qClassNameToValue[qclass]
         return super(Question, cls).__new__(cls, name, qtype, qclass)
 
@@ -260,11 +254,11 @@ class ResourceRecord(namedtuple('ResourceRecord', (
     __slots__ = ()
 
     def __new__(cls, rrname, rrtype, rrclass, ttl, data):
-        if isinstance(rrname, basestring):
+        if isinstance(rrname, str):
             rrname = Domain(rrname)
-        if isinstance(rrtype, basestring):
+        if isinstance(rrtype, str):
             rrtype = typeNameToValue[rrtype]
-        if isinstance(rrclass, basestring):
+        if isinstance(rrclass, str):
             rrclass = classNameToValue[rrclass]
         return super(ResourceRecord, cls).__new__(
             cls, rrname, rrtype, rrclass, ttl, data)

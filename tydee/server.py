@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import errno
 import logging
 import signal
@@ -7,10 +6,7 @@ import struct
 import sys
 import threading
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 from .message import (
     Message, Request, Response,

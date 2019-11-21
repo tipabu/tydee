@@ -1,4 +1,3 @@
-from __future__ import print_function, unicode_literals
 import logging
 import socket
 import string
@@ -17,7 +16,7 @@ def valid_domain_name(name, allow_wildcard=True):
             name = name.decode('ascii')
         except UnicodeDecodeError:
             return False
-    if isinstance(name, type('')):  # go-go unicode literals!
+    if isinstance(name, str):
         name = name.split('.')
     if allow_wildcard and name and name[0] == '*':
         name = name[1:]

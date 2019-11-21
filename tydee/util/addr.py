@@ -1,31 +1,28 @@
-from __future__ import print_function, unicode_literals
 import socket
 import struct
-
-try:
-    int_types = (int, long)
-except NameError:
-    int_types = (int, )
 
 
 class BaseIPAddress(object):
     __slots__ = ('_packed',)
 
     def __init__(self, address):
-        if isinstance(address, int_types):
+        if isinstance(address, int):
             self._packed = b''.join(
                 struct.pack('!I', (address >> (
                     (self.WIDTH - 4 - x) * 8)) & 0xffffffff)
                 for x in range(0, self.WIDTH, 4))
             return
 
+        if isinstance(address, bytes):
+            if len(address) != self.WIDTH:
+                raise ValueError('Bad IP address %r' % (address, ))
+            self._packed = address
+            return
+
         try:
             self._packed = socket.inet_pton(self.AF, address)
         except (socket.error, TypeError):
-            if isinstance(address, bytes) and len(address) == self.WIDTH:
-                self._packed = address
-            else:
-                raise ValueError('Bad IP address %r' % (address, ))
+            raise ValueError('Bad IP address %r' % (address, ))
 
     @property
     def WIDTH(self):
@@ -59,8 +56,6 @@ class BaseIPAddress(object):
 
     def __bool__(self):
         return any(struct.unpack('B' * len(self._packed), self._packed))
-
-    __nonzero__ = __bool__
 
     def __eq__(self, other):
         if not isinstance(other, type(self)):

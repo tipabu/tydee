@@ -1,12 +1,10 @@
-from __future__ import unicode_literals
+import configparser
 import functools
 import io
 import tempfile
 import textwrap
 import unittest
 
-# Piggy-back some py2/py3 compat
-from tydee.server import configparser
 import tydee.util.config
 
 
