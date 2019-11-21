@@ -22,7 +22,7 @@ RETRIES = 2
 LOGGER = logging.getLogger('tydee.server')
 
 
-def recvall(sock, bufsize):
+def recvall(sock : socket.socket, bufsize : int) -> bytes:
     '''Read bufsize bytes from a socket
 
     ...or raise a socket error; whichever comes first'''

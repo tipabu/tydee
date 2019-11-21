@@ -1,6 +1,7 @@
 import logging
 import socket
 import string
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 from ..message import ResourceRecord, Domain
 
@@ -8,7 +9,7 @@ from ..message import ResourceRecord, Domain
 LOGGER = logging.getLogger('tydee.util.config')
 
 
-def valid_domain_name(name, allow_wildcard=True):
+def valid_domain_name(name : Union[str, bytes, Sequence[str]], allow_wildcard : bool = True) -> bool:
     ld = string.ascii_letters + string.digits
     ldh = ld + '-'
     if isinstance(name, bytes):
@@ -26,8 +27,8 @@ def valid_domain_name(name, allow_wildcard=True):
         for label in name)
 
 
-def load_cname_records(parser):
-    records = []
+def load_cname_records(parser) -> List[Tuple[str, Domain]]:
+    records : List[Tuple[str, Domain]] = []
     if not parser.has_section('cname'):
         return records
     for name, cname in parser.items('cname'):
@@ -39,8 +40,8 @@ def load_cname_records(parser):
     return records
 
 
-def load_a_records(parser):
-    records = []
+def load_a_records(parser) -> List[Tuple[str, str]]:
+    records : List[Tuple[str, str]] = []
     if not parser.has_section('ipv4'):
         return records
     for name, addrs in parser.items('ipv4'):
@@ -55,8 +56,8 @@ def load_a_records(parser):
     return records
 
 
-def load_aaaa_records(parser):
-    records = []
+def load_aaaa_records(parser) -> List[Tuple[str, str]]:
+    records : List[Tuple[str, str]] = []
     if not parser.has_section('ipv6'):
         return records
     for name, addrs in parser.items('ipv6'):
@@ -71,8 +72,8 @@ def load_aaaa_records(parser):
     return records
 
 
-def load_txt_records(parser):
-    records = []
+def load_txt_records(parser) -> List[Tuple[str, Tuple[str]]]:
+    records : List[Tuple[str, Tuple[str]]] = []
     if not parser.has_section('txt'):
         return records
     for name, txt in parser.items('txt'):
@@ -85,8 +86,8 @@ def load_txt_records(parser):
 
 
 class RRDB(object):
-    def __init__(self, data=None):
-        self.tree = {}
+    def __init__(self, data : dict = None):
+        self.tree : Dict[str, Any] = {}
         if data:
             for rr_type, entries in data.items():
                 for name, data in entries:
@@ -96,7 +97,7 @@ class RRDB(object):
                     # TODO: maybe make these proper ResourceRecords?
                     t.setdefault('.', []).append((rr_type, data))
 
-    def lookup(self, name):
+    def lookup(self, name : Domain) -> Union[Tuple[ResourceRecord, ...], None]:
         t = self.tree
         wildcard = t.get('*')
         for label in reversed(name):
@@ -120,7 +121,7 @@ class RRDB(object):
             return None
 
     @classmethod
-    def from_parser(cls, parser):
+    def from_parser(cls, parser) -> RRDB:
         new_db = {
             'CNAME': load_cname_records(parser),
             'A': load_a_records(parser),
