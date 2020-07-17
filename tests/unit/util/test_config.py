@@ -106,7 +106,11 @@ class TestConfigParsing(unittest.TestCase):
     @staticmethod
     def make_parser(config):
         parser = configparser.RawConfigParser()
-        parser.readfp(io.StringIO(config))
+        if hasattr(parser, 'read_file'):
+            # python >= 3.2
+            parser.read_file(io.StringIO(config))
+        else:
+            parser.readfp(io.StringIO(config))
         return parser
 
     def test_load_cname(self):
