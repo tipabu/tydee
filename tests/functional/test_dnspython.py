@@ -19,46 +19,49 @@ class TestServer(BaseTestWithServer):
         server_address = cls.get_server_address()
         cls.resolver.nameservers = [server_address]
         cls.resolver.nameserver_ports = {server_address: cls.server.bind_port}
+        if not hasattr(cls.resolver, 'resolve'):
+            # dnspython < 2.0, used on python < 3.6
+            cls.resolver.resolve = cls.resolver.query
 
     def test_cname_only(self):
-        result = self.resolver.query('some.crazy.domain', 'CNAME')
+        result = self.resolver.resolve('some.crazy.domain', 'CNAME')
         self.assertEqual({x.to_text() for x in result.rrset.items},
                          {'container.auth-test.swift.dev.'})
 
     def test_cname_ipv4(self):
-        result = self.resolver.query('some.crazy.domain', 'A')
+        result = self.resolver.resolve('some.crazy.domain', 'A')
         self.assertEqual({x.to_text() for x in result.rrset.items},
                          {'127.0.0.1', '127.0.1.1'})
 
     def test_cname_ipv6(self):
-        result = self.resolver.query('some.crazy.domain', 'AAAA')
+        result = self.resolver.resolve('some.crazy.domain', 'AAAA')
         self.assertEqual({x.to_text() for x in result.rrset.items},
                          {'::1'})
 
     def test_wildcard_ipv4(self):
-        result = self.resolver.query('blah.swift.dev', 'A')
+        result = self.resolver.resolve('blah.swift.dev', 'A')
         self.assertEqual({x.to_text() for x in result.rrset.items},
                          {'127.0.0.1', '127.0.1.1'})
 
     def test_wildcard_ipv6(self):
-        result = self.resolver.query('blah.swift.dev', 'AAAA')
+        result = self.resolver.resolve('blah.swift.dev', 'AAAA')
         self.assertEqual({x.to_text() for x in result.rrset.items}, {'::1'})
 
     def test_nxdomain_ipv4(self):
         with self.assertRaises(dns.resolver.NXDOMAIN):
-            self.resolver.query('non.existent.domain', 'A')
+            self.resolver.resolve('non.existent.domain', 'A')
 
     def test_nxdomain_ipv6(self):
         with self.assertRaises(dns.resolver.NXDOMAIN):
-            self.resolver.query('non.existent.domain', 'AAAA')
+            self.resolver.resolve('non.existent.domain', 'AAAA')
 
     def test_no_records_but_subrecords(self):
         with self.assertRaises(dns.resolver.NoAnswer):
-            self.resolver.query('swift.dev', 'A')
+            self.resolver.resolve('swift.dev', 'A')
         with self.assertRaises(dns.resolver.NoAnswer):
-            self.resolver.query('crazy.domain', 'AAAA')
+            self.resolver.resolve('crazy.domain', 'AAAA')
         with self.assertRaises(dns.resolver.NoAnswer):
-            self.resolver.query('other.domain', 'CNAME')
+            self.resolver.resolve('other.domain', 'CNAME')
 
 
 class TestServerWithIPv4Client(TestServer):
