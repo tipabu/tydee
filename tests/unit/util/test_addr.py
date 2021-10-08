@@ -66,10 +66,10 @@ class TestIPAddresses(unittest.TestCase):
         a4 = tydee.util.addr.IPv4Address('127.0.0.1')
         a6 = tydee.util.addr.IPv6Address('::1')
         with self.assertRaises(TypeError):
-            a4 < a6
+            a4 < a6  # noqa: B015
         with self.assertRaises(TypeError):
-            a4 > a6
+            a4 > a6  # noqa: B015
         with self.assertRaises(TypeError):
-            a6 < a4
+            a6 < a4  # noqa: B015
         with self.assertRaises(TypeError):
-            a6 > a4
+            a6 > a4  # noqa: B015
